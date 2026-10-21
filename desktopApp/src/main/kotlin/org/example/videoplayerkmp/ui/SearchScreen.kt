@@ -1,5 +1,6 @@
 package org.example.videoplayerkmp.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -159,62 +167,94 @@ class SearchState(private val scope: CoroutineScope, private val player: PlayerC
 fun SearchScreen(state: SearchState) {
     val player = LocalPlayer.current
     val colors = MaterialTheme.colorScheme
+    val density = LocalDensity.current
     val focus = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
+    var fieldSize by remember { mutableStateOf(IntSize.Zero) }
+    // Подсказка, выбранная стрелками ↑/↓; -1 — никакая
+    var highlighted by remember(state.suggestions) { mutableStateOf(-1) }
+    val showSuggestions = focused && state.suggestions.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(start = 32.dp, end = 32.dp, top = 28.dp, bottom = 8.dp)) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = state::onQueryChange,
-                placeholder = { Text("Песня, исполнитель или ссылка на YouTube") },
-                leadingIcon = { Icon(Icons.Rounded.Search, null) },
-                trailingIcon = {
-                    if (state.query.isNotEmpty()) {
-                        IconButton(onClick = { state.onQueryChange(""); focus.requestFocus() }) {
-                            Icon(Icons.Rounded.Clear, "Очистить")
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(28.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = colors.surfaceContainerHigh,
-                    unfocusedContainerColor = colors.surfaceContainerHigh,
-                    unfocusedBorderColor = colors.surfaceContainerHigh,
-                ),
-                modifier = Modifier
-                    .widthIn(max = 720.dp)
-                    .fillMaxWidth()
-                    .focusRequester(focus)
-                    .onFocusChanged { focused = it.isFocused }
-                    .onPreviewKeyEvent {
-                        if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                        when (it.key) {
-                            Key.Enter, Key.NumPadEnter -> { state.submit(); true }
-                            Key.Escape -> { state.hideSuggestions(); true }
-                            else -> false
+            Box {
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = state::onQueryChange,
+                    placeholder = { Text("Песня, исполнитель или ссылка на YouTube") },
+                    leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                    trailingIcon = {
+                        if (state.query.isNotEmpty()) {
+                            IconButton(onClick = { state.onQueryChange(""); focus.requestFocus() }) {
+                                Icon(Icons.Rounded.Clear, "Очистить")
+                            }
                         }
                     },
-            )
+                    singleLine = true,
+                    shape = RoundedCornerShape(28.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = colors.surfaceContainerHigh,
+                        unfocusedContainerColor = colors.surfaceContainerHigh,
+                        unfocusedBorderColor = colors.surfaceContainerHigh,
+                    ),
+                    modifier = Modifier
+                        .widthIn(max = 720.dp)
+                        .fillMaxWidth()
+                        .onSizeChanged { fieldSize = it }
+                        .focusRequester(focus)
+                        .onFocusChanged { focused = it.isFocused }
+                        .onPreviewKeyEvent {
+                            if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            val count = state.suggestions.size
+                            when (it.key) {
+                                Key.DirectionDown -> {
+                                    if (!showSuggestions) return@onPreviewKeyEvent false
+                                    highlighted = (highlighted + 1).coerceAtMost(count - 1); true
+                                }
+                                Key.DirectionUp -> {
+                                    if (!showSuggestions) return@onPreviewKeyEvent false
+                                    highlighted = (highlighted - 1).coerceAtLeast(-1); true
+                                }
+                                Key.Enter, Key.NumPadEnter -> {
+                                    val chosen = state.suggestions.getOrNull(highlighted)
+                                    if (showSuggestions && chosen != null) state.submit(chosen) else state.submit()
+                                    true
+                                }
+                                Key.Escape -> { state.hideSuggestions(); true }
+                                else -> false
+                            }
+                        },
+                )
 
-            if (focused && state.suggestions.isNotEmpty()) {
-                Surface(
-                    Modifier.padding(top = 6.dp).widthIn(max = 720.dp).fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = colors.surfaceContainerHigh,
-                    shadowElevation = 8.dp,
-                ) {
-                    Column(Modifier.padding(vertical = 6.dp)) {
-                        state.suggestions.forEach { suggestion ->
-                            Row(
-                                Modifier.fillMaxWidth().clickable { state.submit(suggestion) }
-                                    .padding(horizontal = 18.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(Icons.Rounded.Search, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
-                                Spacer(Modifier.width(14.dp))
-                                Text(suggestion, style = MaterialTheme.typography.bodyLarge)
+                // Подсказки — отдельный слой поверх контента: он не забирает фокус у поля
+                // (иначе список исчезал бы до клика) и не сдвигает вёрстку под курсором
+                if (showSuggestions) {
+                    Popup(
+                        offset = IntOffset(0, fieldSize.height + with(density) { 6.dp.roundToPx() }),
+                        onDismissRequest = state::hideSuggestions,
+                        properties = PopupProperties(focusable = false),
+                    ) {
+                        Surface(
+                            Modifier.width(with(density) { fieldSize.width.toDp() }),
+                            shape = RoundedCornerShape(16.dp),
+                            color = colors.surfaceContainerHigh,
+                            shadowElevation = 8.dp,
+                        ) {
+                            Column(Modifier.padding(vertical = 6.dp)) {
+                                state.suggestions.forEachIndexed { i, suggestion ->
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .background(if (i == highlighted) colors.surfaceContainerHighest else Color.Transparent)
+                                            .clickable { state.submit(suggestion) }
+                                            .padding(horizontal = 18.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(Icons.Rounded.Search, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
+                                        Spacer(Modifier.width(14.dp))
+                                        Text(suggestion, style = MaterialTheme.typography.bodyLarge)
+                                    }
+                                }
                             }
                         }
                     }

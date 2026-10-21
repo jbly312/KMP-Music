@@ -74,17 +74,19 @@ fun Sidebar(expanded: Boolean, onToggle: () -> Unit) {
                     color = colors.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
+                ImportButton { dialogs.show(DialogRequest.ImportSpotify) }
                 NewPlaylistButton { dialogs.show(DialogRequest.NewPlaylist()) }
             }
         } else {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 NewPlaylistButton { dialogs.show(DialogRequest.NewPlaylist()) }
+                ImportButton { dialogs.show(DialogRequest.ImportSpotify) }
             }
         }
 
         if (data.playlists.isEmpty() && expanded) {
             Text(
-                "Создайте плейлист кнопкой «+» или через меню трека",
+                "Создайте плейлист кнопкой «+» или перенесите свой из Spotify",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -113,6 +115,15 @@ private fun NewPlaylistButton(onClick: () -> Unit) {
     Tip("Новый плейлист") {
         IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
             Icon(Icons.Rounded.Add, "Новый плейлист", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ImportButton(onClick: () -> Unit) {
+    Tip("Импорт из Spotify") {
+        IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Rounded.Download, "Импорт из Spotify", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

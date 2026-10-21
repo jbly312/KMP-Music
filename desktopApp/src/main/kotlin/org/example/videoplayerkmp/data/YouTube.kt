@@ -113,7 +113,8 @@ object YouTube {
         val id = extractVideoId(stream.url) ?: return@mapNotNull null
         Track(
             id = id,
-            title = stream.name,
+            // У некоторых видео в названии оказывается служебная вторая строка
+            title = stream.name.substringBefore('\n').trim(),
             artist = stream.uploaderName.orEmpty(),
             durationSec = stream.duration,
             thumbnailUrl = stream.thumbnails.pickThumbnail(),

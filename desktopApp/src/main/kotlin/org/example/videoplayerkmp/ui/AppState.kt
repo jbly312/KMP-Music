@@ -34,6 +34,7 @@ sealed interface DialogRequest {
     data class NewPlaylist(val track: Track? = null) : DialogRequest
     data class RenamePlaylist(val playlist: Playlist) : DialogRequest
     data class DeletePlaylist(val playlist: Playlist) : DialogRequest
+    data object ImportSpotify : DialogRequest
 }
 
 class Dialogs {

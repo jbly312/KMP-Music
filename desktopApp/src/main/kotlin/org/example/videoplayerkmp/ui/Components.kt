@@ -442,6 +442,7 @@ fun DialogHost() {
 
     when (val request = dialogs.current) {
         null -> Unit
+        DialogRequest.ImportSpotify -> SpotifyImportDialog(onDismiss = dialogs::dismiss)
         is DialogRequest.NewPlaylist -> NameDialog(
             title = "Новый плейлист",
             initial = "",

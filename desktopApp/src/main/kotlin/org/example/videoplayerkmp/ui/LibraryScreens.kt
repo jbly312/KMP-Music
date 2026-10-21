@@ -54,10 +54,18 @@ fun HomeScreen() {
                     "Ищите песни и исполнителей или вставьте ссылку на YouTube.\n" +
                         "Когда трек закончится, автоплей подберёт похожие.",
                 ) {
-                    Button(onClick = { navigator.go(Screen.Search) }) {
-                        Icon(Icons.Rounded.Search, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Перейти к поиску")
+                    val dialogs = LocalDialogs.current
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = { navigator.go(Screen.Search) }) {
+                            Icon(Icons.Rounded.Search, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Перейти к поиску")
+                        }
+                        OutlinedButton(onClick = { dialogs.show(DialogRequest.ImportSpotify) }) {
+                            Icon(Icons.Rounded.Download, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Импорт из Spotify")
+                        }
                     }
                 }
                 return@Column
