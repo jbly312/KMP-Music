@@ -16,12 +16,15 @@ services:
       # Снаружи сервер доступен только через туннель
       - "127.0.0.1:8080:8080"
 
+  # Туннель включается строкой COMPOSE_PROFILES=tunnel в .env.
+  # Без неё запускается только сервер — удобно, чтобы сначала проверить его локально
   tunnel:
     image: cloudflare/cloudflared:latest
     container_name: kmp-music-tunnel
+    profiles: ["tunnel"]
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Укажите TUNNEL_TOKEN в .env — см. docs/self-hosting.md}
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
     depends_on:
       - server

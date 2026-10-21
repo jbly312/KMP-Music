@@ -32,10 +32,13 @@
 
 1. Создайте папку, например `kmp-music-server`, и положите в неё два файла из папки
    [`deploy`](../deploy) этого репозитория: `docker-compose.yml` и `.env.example`.
-2. Переименуйте `.env.example` в `.env` и вставьте токен туннеля:
+2. Переименуйте `.env.example` в `.env`, раскомментируйте строки туннеля и вставьте токен:
    ```
+   COMPOSE_PROFILES=tunnel
    TUNNEL_TOKEN=eyJhIjoi…
    ```
+   Без этих строк запустится только сервер, доступный с этого компьютера по `http://localhost:8080`, —
+   так удобно сначала проверить, что всё работает.
 3. В этой папке выполните:
    ```bash
    docker compose up -d
@@ -84,5 +87,6 @@
   `ghcr.io/jbly312/kmp-music-server`. Новый пакет в GHCR по умолчанию приватный — сделайте его
   публичным в настройках пакета, чтобы `docker compose pull` работал без входа.
 - Локальный запуск без Docker: `./gradlew :server:run` (данные — в `server/data`).
-- Собрать образ самому: `docker build -t kmp-music-server .`
+- Запустить из исходников, не дожидаясь образа в GHCR (из папки `deploy`):
+  `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`
 - Протокол API описан в [`sync-protocol`](../sync-protocol/src/commonMain/kotlin/org/example/videoplayerkmp/sync/Protocol.kt).
