@@ -16,15 +16,19 @@
 
 ## 1. Туннель в Cloudflare
 
-1. Откройте [панель Cloudflare](https://dash.cloudflare.com) → **Zero Trust** → **Networks** → **Tunnels**.
-2. **Create a tunnel** → тип **Cloudflared** → придумайте название (например, `kmp-music`).
-3. На шаге установки коннектора Cloudflare покажет команду вида
-   `cloudflared service install eyJhIjoi…`. Скопируйте длинную строку после `install` — это **токен туннеля**.
+Туннели находятся в основной панели Cloudflare (с 2026 года — не в разделе Zero Trust).
+
+1. Откройте [панель Cloudflare](https://dash.cloudflare.com) → **Networking** → **Tunnels** → **Create Tunnel**.
+2. Придумайте название (например, `kmp-music`) и создайте туннель.
+3. В разделе **Install and Run** Cloudflare покажет команду с токеном (`… --token eyJhIjoi…`).
+   Скопируйте длинную строку после `--token` — это **токен туннеля**.
    Саму команду выполнять не нужно: коннектор запустится в Docker.
-4. На вкладке **Public Hostname** добавьте адрес:
-   - **Subdomain**: например, `music`
-   - **Domain**: ваш домен
-   - **Service**: `HTTP` и `server:8080`
+4. Откройте туннель → **Routes** → **Add route** → **Published application**:
+   - **Hostname**: поддомен, например `music`, и ваш домен
+   - **Service URL**: `http://server:8080`
+
+   Именно `server`, а не `localhost`: коннектор работает в своём контейнере и обращается к серверу
+   по имени сервиса из `docker-compose.yml`.
 
 Сервер будет доступен по адресу вида `https://music.ваш-домен.ru`.
 
