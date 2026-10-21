@@ -24,6 +24,9 @@ services:
     profiles: ["tunnel"]
     restart: unless-stopped
     command: tunnel --no-autoupdate run
+    # cloudflared находит серверы Cloudflare по SRV-записи. Некоторые сети и VPN-клиенты её не пропускают —
+    # тогда в .env укажите DNS, который её отдаёт (например, роутера): TUNNEL_DNS=192.168.1.1
+    dns: ${TUNNEL_DNS:-1.1.1.1}
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
     depends_on:
