@@ -1,0 +1,281 @@
+package org.example.videoplayerkmp.ui
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.yushosei.newpipe.extractor.Page
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.example.videoplayerkmp.data.SearchKind
+import org.example.videoplayerkmp.data.Track
+import org.example.videoplayerkmp.data.YouTube
+import org.example.videoplayerkmp.data.extractVideoId
+import org.example.videoplayerkmp.player.PlayerController
+
+/** Состояние поиска живёт выше экрана, чтобы результаты не терялись при переходах. */
+class SearchState(private val scope: CoroutineScope, private val player: PlayerController) {
+    var query by mutableStateOf("")
+        private set
+    var kind by mutableStateOf(SearchKind.SONGS)
+        private set
+    var results by mutableStateOf<List<Track>>(emptyList())
+        private set
+    var suggestions by mutableStateOf<List<String>>(emptyList())
+        private set
+    var isLoading by mutableStateOf(false)
+        private set
+    var isLoadingMore by mutableStateOf(false)
+        private set
+    var error by mutableStateOf<String?>(null)
+        private set
+    var submittedQuery by mutableStateOf("")
+        private set
+
+    private var nextPage: Page? = null
+    private var searchToken = 0
+    private var searchJob: Job? = null
+    private var suggestJob: Job? = null
+    private var moreJob: Job? = null
+
+    fun onQueryChange(text: String) {
+        query = text
+        suggestJob?.cancel()
+        if (text.isBlank() || extractVideoId(text) != null) {
+            suggestions = emptyList()
+            return
+        }
+        suggestJob = scope.launch {
+            delay(250)
+            suggestions = runCatching { YouTube.suggestions(text) }.getOrDefault(emptyList()).take(8)
+        }
+    }
+
+    fun hideSuggestions() {
+        suggestJob?.cancel()
+        suggestions = emptyList()
+    }
+
+    fun selectKind(value: SearchKind) {
+        if (kind == value) return
+        kind = value
+        if (submittedQuery.isNotBlank() && extractVideoId(submittedQuery) == null) search(submittedQuery)
+    }
+
+    fun submit(text: String = query) {
+        query = text
+        hideSuggestions()
+        val q = text.trim()
+        if (q.isEmpty()) return
+        if (extractVideoId(q) != null) openLink(q) else search(q)
+    }
+
+    fun retry() = submit(submittedQuery)
+
+    fun loadMore() {
+        val page = nextPage ?: return
+        if (isLoading || isLoadingMore) return
+        isLoadingMore = true
+        val token = searchToken
+        moreJob = scope.launch {
+            try {
+                val result = YouTube.searchMore(submittedQuery, kind, page)
+                if (token != searchToken) return@launch
+                results = results + result.tracks
+                nextPage = result.next
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                nextPage = null
+            } finally {
+                if (token == searchToken) isLoadingMore = false
+            }
+        }
+    }
+
+    private fun search(q: String) = startLoading(q) { token ->
+        val page = YouTube.search(q, kind)
+        if (token == searchToken) {
+            results = page.tracks
+            nextPage = page.next
+        }
+    }
+
+    /** Вставили ссылку на YouTube — сразу играем этот трек. */
+    private fun openLink(url: String) = startLoading(url) { token ->
+        val track = YouTube.track(url)
+        if (token == searchToken) {
+            results = listOf(track)
+            player.playTracks(listOf(track))
+        }
+    }
+
+    private fun startLoading(q: String, block: suspend (token: Int) -> Unit) {
+        searchJob?.cancel()
+        moreJob?.cancel()
+        val token = ++searchToken
+        submittedQuery = q
+        results = emptyList()
+        nextPage = null
+        error = null
+        isLoading = true
+        isLoadingMore = false
+        searchJob = scope.launch {
+            try {
+                block(token)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (token == searchToken) error = e.message ?: "Не удалось выполнить поиск"
+            } finally {
+                if (token == searchToken) isLoading = false
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchScreen(state: SearchState) {
+    val player = LocalPlayer.current
+    val colors = MaterialTheme.colorScheme
+    val focus = remember { FocusRequester() }
+    var focused by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxSize()) {
+        Column(Modifier.padding(start = 32.dp, end = 32.dp, top = 28.dp, bottom = 8.dp)) {
+            OutlinedTextField(
+                value = state.query,
+                onValueChange = state::onQueryChange,
+                placeholder = { Text("Песня, исполнитель или ссылка на YouTube") },
+                leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                trailingIcon = {
+                    if (state.query.isNotEmpty()) {
+                        IconButton(onClick = { state.onQueryChange(""); focus.requestFocus() }) {
+                            Icon(Icons.Rounded.Clear, "Очистить")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = colors.surfaceContainerHigh,
+                    unfocusedContainerColor = colors.surfaceContainerHigh,
+                    unfocusedBorderColor = colors.surfaceContainerHigh,
+                ),
+                modifier = Modifier
+                    .widthIn(max = 720.dp)
+                    .fillMaxWidth()
+                    .focusRequester(focus)
+                    .onFocusChanged { focused = it.isFocused }
+                    .onPreviewKeyEvent {
+                        if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when (it.key) {
+                            Key.Enter, Key.NumPadEnter -> { state.submit(); true }
+                            Key.Escape -> { state.hideSuggestions(); true }
+                            else -> false
+                        }
+                    },
+            )
+
+            if (focused && state.suggestions.isNotEmpty()) {
+                Surface(
+                    Modifier.padding(top = 6.dp).widthIn(max = 720.dp).fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = colors.surfaceContainerHigh,
+                    shadowElevation = 8.dp,
+                ) {
+                    Column(Modifier.padding(vertical = 6.dp)) {
+                        state.suggestions.forEach { suggestion ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable { state.submit(suggestion) }
+                                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Rounded.Search, null, Modifier.size(18.dp), tint = colors.onSurfaceVariant)
+                                Spacer(Modifier.width(14.dp))
+                                Text(suggestion, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SearchKind.entries.forEach { kind ->
+                    FilterChip(
+                        selected = state.kind == kind,
+                        onClick = { state.selectKind(kind) },
+                        label = { Text(kind.title) },
+                        shape = RoundedCornerShape(16.dp),
+                    )
+                }
+            }
+        }
+
+        val results = state.results
+        when {
+            state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            state.error != null -> EmptyState(
+                Icons.Rounded.ErrorOutline,
+                "Что-то пошло не так",
+                state.error.orEmpty(),
+            ) { Button(onClick = state::retry) { Text("Повторить") } }
+            results.isEmpty() && state.submittedQuery.isNotEmpty() -> EmptyState(
+                Icons.Rounded.SearchOff,
+                "Ничего не найдено",
+                "Попробуйте изменить запрос или поискать среди видео",
+            )
+            results.isEmpty() -> EmptyState(
+                Icons.Rounded.Search,
+                "Что послушаем?",
+                "Ищите песни и исполнителей или вставьте ссылку на видео YouTube",
+            )
+            else -> TrackList(
+                tracks = results,
+                modifier = Modifier.fillMaxSize(),
+                onEndReached = state::loadMore,
+                onPlay = { i -> player.playRadio(results[i]) },
+                header = {
+                    Text(
+                        "Результаты по запросу «${state.submittedQuery}»",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 8.dp),
+                    )
+                },
+                footer = {
+                    if (state.isLoadingMore) {
+                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                        }
+                    }
+                },
+            )
+        }
+    }
+
+    LaunchedEffect(Unit) { focus.requestFocus() }
+}
