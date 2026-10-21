@@ -49,16 +49,17 @@ class Dialogs {
     }
 }
 
-/** Короткое уведомление внизу экрана. */
-fun interface Notifier {
-    fun notify(text: String)
+/** Короткое уведомление внизу экрана; с [actionLabel] — например, «Отменить». */
+class Notifier(private val show: (text: String, actionLabel: String?, onAction: (() -> Unit)?) -> Unit) {
+    fun notify(text: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) =
+        show(text, actionLabel, onAction)
 }
 
 val LocalPlayer = staticCompositionLocalOf<PlayerController> { error("PlayerController не передан") }
 val LocalLibrary = staticCompositionLocalOf<Library> { error("Library не передана") }
 val LocalNavigator = staticCompositionLocalOf<Navigator> { error("Navigator не передан") }
 val LocalDialogs = staticCompositionLocalOf<Dialogs> { error("Dialogs не переданы") }
-val LocalNotifier = staticCompositionLocalOf { Notifier { } }
+val LocalNotifier = staticCompositionLocalOf { Notifier { _, _, _ -> } }
 
 val LocalPlayerState = compositionLocalOf { PlayerState() }
 val LocalLibraryData = compositionLocalOf { LibraryData() }

@@ -62,6 +62,11 @@ class Library(private val file: File) {
 
     fun clearHistory() = _data.update { it.copy(history = emptyList()) }
 
+    /** Отмена очистки истории: возвращаем старые записи после тех, что появились с тех пор. */
+    fun restoreHistory(tracks: List<Track>) = _data.update { d ->
+        d.copy(history = (d.history + tracks).distinctBy { it.id }.take(HISTORY_LIMIT))
+    }
+
     fun createPlaylist(name: String, tracks: List<Track> = emptyList()): Playlist {
         val playlist = Playlist(name = name.trim(), tracks = tracks)
         _data.update { it.copy(playlists = it.playlists + playlist) }
@@ -74,6 +79,10 @@ class Library(private val file: File) {
 
     fun addToPlaylist(id: String, track: Track) = updatePlaylist(id) { p ->
         if (p.tracks.any { it.id == track.id }) p else p.copy(tracks = p.tracks + track)
+    }
+
+    fun insertIntoPlaylist(id: String, index: Int, track: Track) = updatePlaylist(id) { p ->
+        p.copy(tracks = p.tracks.toMutableList().apply { add(index.coerceIn(0, size), track) })
     }
 
     fun removeFromPlaylist(id: String, index: Int) = updatePlaylist(id) { p ->

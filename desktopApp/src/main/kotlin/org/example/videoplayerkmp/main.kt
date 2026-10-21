@@ -61,7 +61,7 @@ fun main() {
                 true
             },
         ) {
-            window.minimumSize = Dimension(980, 640)
+            window.minimumSize = Dimension(860, 600)
             MusicApp(player, library, navigator, searchState)
         }
     }
