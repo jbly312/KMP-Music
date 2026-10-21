@@ -1,0 +1,27 @@
+# KMP Music — сервер синхронизации + Cloudflare Tunnel.
+# Запуск: заполните .env (см. .env.example) и выполните `docker compose up -d`.
+
+services:
+  server:
+    image: ghcr.io/jbly312/kmp-music-server:latest
+    container_name: kmp-music-server
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-KMP Music}
+    volumes:
+      # База и секрет подписи токенов. Резервная копия — копия этой папки
+      - ./data:/data
+    ports:
+      # Доступ только с этого компьютера (десктоп-приложение может подключаться к http://localhost:8080).
+      # Снаружи сервер доступен только через туннель
+      - "127.0.0.1:8080:8080"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: kmp-music-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Укажите TUNNEL_TOKEN в .env — см. docs/self-hosting.md}
+    depends_on:
+      - server

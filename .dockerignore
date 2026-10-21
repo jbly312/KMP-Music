@@ -1,0 +1,10 @@
+.git
+.gradle
+.idea
+.kotlin
+**/build
+desktopApp
+shared
+deploy/data
+*.iml
+local.properties
