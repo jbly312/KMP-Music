@@ -2,6 +2,7 @@ package org.example.videoplayerkmp.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +19,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -54,6 +59,8 @@ object ImageLoader {
     }
 }
 
+private val DimArtwork = ColorFilter.tint(Color.Black.copy(alpha = 0.08f), BlendMode.SrcAtop)
+
 /** У обложек YouTube Music размер задаётся в URL (=w120-h120) — просим нужный. */
 fun sizedThumbnail(url: String?, px: Int): String? =
     url?.replace(Regex("""=w\d+-h\d+"""), "=w$px-h$px")
@@ -65,13 +72,25 @@ fun Thumbnail(url: String?, modifier: Modifier, shape: Shape) {
     LaunchedEffect(url) {
         if (url != null && bitmap == null) bitmap = ImageLoader.load(url)
     }
+    val dark = LocalIsDark.current
     Box(
-        modifier.clip(shape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            // Тонкая рамка отделяет светлые обложки от светлого фона
+            .border(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f), shape),
         contentAlignment = Alignment.Center,
     ) {
         val image = bitmap
         if (image != null) {
-            Image(image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Image(
+                image,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                // В тёмной теме чуть приглушаем обложки, чтобы белые не «светились»
+                colorFilter = if (dark) DimArtwork else null,
+            )
         } else {
             Icon(
                 Icons.Rounded.MusicNote,

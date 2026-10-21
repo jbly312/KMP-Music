@@ -255,6 +255,7 @@ fun FavoritesScreen() {
 @Composable
 fun HistoryScreen() {
     val library = LocalLibrary.current
+    val notifier = LocalNotifier.current
     val history = LocalLibraryData.current.history
     TrackList(
         tracks = history,
@@ -263,7 +264,11 @@ fun HistoryScreen() {
             CollectionHeader("Коллекция", "История", history, { GradientCover(Icons.Rounded.History, it) }) {
                 if (history.isNotEmpty()) {
                     Tip("Очистить историю") {
-                        IconButton(onClick = library::clearHistory) { Icon(Icons.Rounded.DeleteSweep, "Очистить историю") }
+                        IconButton(onClick = {
+                            val cleared = history
+                            library.clearHistory()
+                            notifier.notify("История очищена", "Отменить") { library.restoreHistory(cleared) }
+                        }) { Icon(Icons.Rounded.DeleteSweep, "Очистить историю") }
                     }
                 }
             }

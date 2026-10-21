@@ -21,6 +21,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,7 +46,13 @@ fun PlayerBar(queueVisible: Boolean, onToggleQueue: () -> Unit) {
         // Текущий трек
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             if (track != null) {
-                Thumbnail(sizedThumbnail(track.thumbnailUrl, 226), Modifier.size(58.dp), RoundedCornerShape(8.dp))
+                Tip("Сейчас играет") {
+                    Thumbnail(
+                        sizedThumbnail(track.thumbnailUrl, 226),
+                        Modifier.size(52.dp).clickable(onClick = onToggleQueue),
+                        RoundedCornerShape(8.dp),
+                    )
+                }
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f, fill = false)) {
                     Text(
@@ -102,7 +110,7 @@ fun PlayerBar(queueVisible: Boolean, onToggleQueue: () -> Unit) {
                 state.autoplay,
                 player::toggleAutoplay,
             )
-            ToggleIcon(Icons.AutoMirrored.Rounded.QueueMusic, "Очередь", queueVisible, onToggleQueue)
+            ToggleIcon(Icons.AutoMirrored.Rounded.QueueMusic, "Сейчас играет и очередь", queueVisible, onToggleQueue)
             VolumeControl(state.volume, player::setVolume)
         }
     }
@@ -190,57 +198,91 @@ private fun VolumeControl(volume: Float, onChange: (Float) -> Unit) {
     CompactSlider(volume, onChange, Modifier.width(110.dp))
 }
 
-// ---------- Очередь ----------
+// ---------- Сейчас играет и очередь ----------
 
+/**
+ * Главный экран момента: крупная обложка и её цвет, разлитый по фону панели.
+ * Ниже — очередь, по которой можно перейти к любому треку.
+ */
 @Composable
-fun QueuePanel(onClose: () -> Unit) {
+fun NowPlayingPanel(onClose: () -> Unit) {
     val player = LocalPlayer.current
     val state = LocalPlayerState.current
     val colors = MaterialTheme.colorScheme
-    val listState = rememberLazyListState()
+    val dark = LocalIsDark.current
+    val current = state.current
 
-    Column(Modifier.width(340.dp).fillMaxHeight().background(colors.surfaceContainerLow)) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Очередь", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            if (state.upcoming.isNotEmpty()) TextButton(onClick = player::clearUpcoming) { Text("Очистить") }
-            IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, "Закрыть") }
-        }
-        LazyColumn(state = listState, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
-            val current = state.current
+    Box(Modifier.width(340.dp).fillMaxHeight().background(colors.surfaceContainerLow)) {
+        Box(
+            Modifier.fillMaxWidth().height(460.dp).background(
+                Brush.verticalGradient(listOf(colors.primary.copy(alpha = if (dark) 0.30f else 0.18f), Color.Transparent))
+            )
+        )
+        LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 16.dp)) {
+            item {
+                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Сейчас играет", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    Tip("Закрыть панель") {
+                        IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, "Закрыть панель") }
+                    }
+                }
+            }
             if (current == null) {
                 item {
                     Text(
-                        "Выберите трек, чтобы начать",
-                        Modifier.padding(12.dp),
-                        color = colors.onSurfaceVariant,
+                        "Выберите трек, и здесь появится его обложка и очередь",
                         style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp),
                     )
                 }
                 return@LazyColumn
             }
-            item { QueueLabel("Сейчас играет") }
-            item(key = "current") { QueueRow(current, isCurrent = true, onClick = {}, onRemove = null) }
-            if (state.upcoming.isNotEmpty()) {
-                item {
-                    QueueLabel("Далее")
-                    state.radioSeed?.let { seed ->
-                        Text(
-                            "В очереди радио по треку «${seed.title}»",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 12.dp, bottom = 6.dp),
-                        )
+            item(key = "artwork") {
+                Column(Modifier.padding(end = 8.dp)) {
+                    Thumbnail(
+                        sizedThumbnail(current.thumbnailUrl, 544),
+                        Modifier.fillMaxWidth().aspectRatio(1f).shadow(24.dp, RoundedCornerShape(14.dp)),
+                        RoundedCornerShape(14.dp),
+                    )
+                    Spacer(Modifier.height(18.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(current.title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                current.artist,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        FavoriteButton(current)
+                        TrackMenuButton(current)
                     }
+                    state.error?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.error, modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+            }
+            item {
+                Row(Modifier.fillMaxWidth().padding(top = 28.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Далее", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    if (state.upcoming.isNotEmpty()) TextButton(onClick = player::clearUpcoming) { Text("Очистить") }
+                }
+                state.radioSeed?.takeIf { state.upcoming.isNotEmpty() }?.let { seed ->
+                    Text(
+                        "Радио по треку «${seed.title}»",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
                 }
             }
             itemsIndexed(state.upcoming, key = { i, t -> "${t.id}#${state.index + 1 + i}" }) { i, track ->
                 val queueIndex = state.index + 1 + i
                 QueueRow(
                     track,
-                    isCurrent = false,
                     onClick = { player.skipTo(queueIndex) },
                     onRemove = { player.removeFromQueue(queueIndex) },
                 )
@@ -248,11 +290,11 @@ fun QueuePanel(onClose: () -> Unit) {
             if (state.upcoming.isEmpty()) {
                 item {
                     Text(
-                        if (state.autoplay) "Когда трек закончится, автоплей добавит похожие треки"
+                        if (state.autoplay) "Когда трек закончится, автоплей добавит похожие"
                         else "Дальше ничего нет — добавьте треки через меню «⋯»",
-                        Modifier.padding(12.dp),
-                        color = colors.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, end = 8.dp),
                     )
                 }
             }
@@ -261,17 +303,7 @@ fun QueuePanel(onClose: () -> Unit) {
 }
 
 @Composable
-private fun QueueLabel(text: String) {
-    Text(
-        text.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 6.dp),
-    )
-}
-
-@Composable
-private fun QueueRow(track: Track, isCurrent: Boolean, onClick: () -> Unit, onRemove: (() -> Unit)?) {
+private fun QueueRow(track: Track, onClick: () -> Unit, onRemove: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
@@ -279,7 +311,7 @@ private fun QueueRow(track: Track, isCurrent: Boolean, onClick: () -> Unit, onRe
         Modifier.fillMaxWidth().height(56.dp)
             .hoverable(interaction)
             .background(if (hovered) colors.surfaceContainerHigh else Color.Transparent, RoundedCornerShape(8.dp))
-            .clickable(enabled = !isCurrent, onClick = onClick)
+            .clickable(onClick = onClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -290,7 +322,6 @@ private fun QueueRow(track: Track, isCurrent: Boolean, onClick: () -> Unit, onRe
                 track.title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = if (isCurrent) colors.primary else colors.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -302,7 +333,7 @@ private fun QueueRow(track: Track, isCurrent: Boolean, onClick: () -> Unit, onRe
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (onRemove != null && hovered) {
+        if (hovered) {
             IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
                 Icon(Icons.Rounded.Close, "Убрать из очереди", Modifier.size(18.dp), tint = colors.onSurfaceVariant)
             }

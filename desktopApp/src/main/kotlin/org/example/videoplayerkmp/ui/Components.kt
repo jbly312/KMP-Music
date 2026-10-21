@@ -1,6 +1,16 @@
 package org.example.videoplayerkmp.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.animation.core.RepeatMode as AnimationRepeatMode
 import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
@@ -102,7 +112,7 @@ fun CompactSlider(
     val interaction = remember { MutableInteractionSource() }
     val colors = SliderDefaults.colors(
         thumbColor = MaterialTheme.colorScheme.onSurface,
-        activeTrackColor = MaterialTheme.colorScheme.onSurface,
+        activeTrackColor = MaterialTheme.colorScheme.primary,
         inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         disabledThumbColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         disabledActiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -250,29 +260,35 @@ fun TrackRow(
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
+    val background = when {
+        hovered -> colors.surfaceContainerHigh
+        isCurrent -> colors.primary.copy(alpha = 0.10f)
+        else -> Color.Transparent
+    }
     Row(
         Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(56.dp)
             .hoverable(interaction)
-            .background(if (hovered) colors.surfaceContainerHigh else Color.Transparent, RoundedCornerShape(8.dp))
+            .background(background, RoundedCornerShape(10.dp))
             .clickable(onClick = onPlay)
-            .padding(start = 8.dp, end = 4.dp),
+            .padding(start = 6.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.width(36.dp), contentAlignment = Alignment.Center) {
             when {
                 hovered -> Icon(Icons.Rounded.PlayArrow, "Слушать", Modifier.size(20.dp))
-                isCurrent && isPlaying -> Icon(Icons.Rounded.GraphicEq, null, Modifier.size(18.dp), tint = colors.primary)
+                // Форма (эквалайзер) дублирует цвет: текущий трек виден и без различения цветов
+                isCurrent -> EqualizerBars(playing = isPlaying, color = colors.primary, modifier = Modifier.size(14.dp))
                 else -> Text(
                     "${index + 1}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isCurrent) colors.primary else colors.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant,
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
-        Thumbnail(track.thumbnailUrl, Modifier.size(44.dp), RoundedCornerShape(6.dp))
+        Spacer(Modifier.width(6.dp))
+        Thumbnail(track.thumbnailUrl, Modifier.size(40.dp), RoundedCornerShape(6.dp))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -294,12 +310,46 @@ fun TrackRow(
         FavoriteButton(track, alwaysVisible = hovered)
         Text(
             formatDuration(track.durationSec),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = colors.onSurfaceVariant,
-            modifier = Modifier.width(52.dp),
+            modifier = Modifier.width(48.dp),
             textAlign = TextAlign.End,
         )
         TrackMenuButton(track, playlistId, index)
+    }
+}
+
+/** Три полоски: пляшут, пока трек играет, и замирают на паузе. */
+@Composable
+fun EqualizerBars(playing: Boolean, color: Color, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "eq")
+    val resting = listOf(0.45f, 0.85f, 0.6f)
+    val heights = List(3) { i ->
+        if (playing) {
+            transition.animateFloat(
+                initialValue = 0.25f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    tween(durationMillis = 380 + i * 140, easing = FastOutSlowInEasing),
+                    AnimationRepeatMode.Reverse,
+                ),
+                label = "bar$i",
+            ).value
+        } else {
+            resting[i]
+        }
+    }
+    Canvas(modifier) {
+        val barWidth = size.width / 5
+        heights.forEachIndexed { i, h ->
+            val barHeight = size.height * h
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(i * 2 * barWidth, size.height - barHeight),
+                size = Size(barWidth, barHeight),
+                cornerRadius = CornerRadius(barWidth / 2),
+            )
+        }
     }
 }
 
@@ -340,7 +390,11 @@ fun TrackMenuButton(track: Track, playlistId: String? = null, index: Int = -1) {
                 }
                 if (playlistId != null) {
                     MenuItem(Icons.Rounded.RemoveCircleOutline, "Удалить из плейлиста") {
-                        library.removeFromPlaylist(playlistId, index); close()
+                        library.removeFromPlaylist(playlistId, index)
+                        notifier.notify("Трек удалён из плейлиста", "Отменить") {
+                            library.insertIntoPlaylist(playlistId, index, track)
+                        }
+                        close()
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
