@@ -1,0 +1,5 @@
+# Скрипты, которые запускаются внутри Linux-контейнера, всегда с LF —
+# иначе сборка Docker-образа на Windows падает с "/bin/sh^M"
+gradlew text eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
