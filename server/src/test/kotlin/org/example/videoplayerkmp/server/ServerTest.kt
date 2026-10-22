@@ -5,6 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -145,6 +146,21 @@ class ServerTest {
         client.setupAdmin()
         repeat(2) { client.postJson<Unit>("/api/auth/login", LoginRequest("admin", "wrong-password", "PC")) }
         assertEquals(HttpStatusCode.TooManyRequests, client.postJson<Unit>("/api/auth/login", LoginRequest("admin", "wrong-password", "PC")).status)
+    }
+
+    @Test
+    fun `rate limit is per client behind a local proxy`() = serverTest(attemptsPerMinute = 3) { client ->
+        client.setupAdmin()
+        suspend fun loginFrom(forwardedFor: String) = client.post("/api/auth/login") {
+            contentType(ContentType.Application.Json)
+            header("X-Forwarded-For", forwardedFor)
+            setBody(LoginRequest("admin", "wrong-password", "PC"))
+        }.status
+        // Прокси дописывает настоящий адрес в конец — начало заголовка подставил клиент
+        repeat(3) { loginFrom("6.6.6.6, 203.0.113.1") }
+        assertEquals(HttpStatusCode.TooManyRequests, loginFrom("7.7.7.7, 203.0.113.1"))
+        // Другой человек за тем же прокси не заблокирован
+        assertEquals(HttpStatusCode.Unauthorized, loginFrom("203.0.113.2"))
     }
 
     // ---------- Синхронизация ----------

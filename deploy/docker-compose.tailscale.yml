@@ -1,0 +1,34 @@
+# Доступ к серверу из интернета через Tailscale Funnel — без своего домена и открытых портов.
+# Адрес будет вида https://kmp-music.<имя-вашей-сети>.ts.net
+#
+# Запуск (из папки deploy):
+#   docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
+# Нужен TS_AUTHKEY в .env — см. docs/self-hosting.md
+
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: kmp-music-tailscale
+    hostname: ${TS_HOSTNAME:-kmp-music}
+    restart: unless-stopped
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?Укажите TS_AUTHKEY в .env — см. docs/self-hosting.md}
+      TS_HOSTNAME: ${TS_HOSTNAME:-kmp-music}
+      # Состояние узла (ключи, сертификат, настройки Funnel) — без него при каждом перезапуске
+      # появлялось бы новое устройство с новым адресом
+      TS_STATE_DIR: /var/lib/tailscale
+      # Funnel: https на 443 → сервер на 127.0.0.1:8080
+      TS_SERVE_CONFIG: /config/serve.json
+    volumes:
+      - ./tailscale/state:/var/lib/tailscale
+      - ./tailscale/config:/config:ro
+    ports:
+      # Сервер живёт в сети этого контейнера, поэтому локальный порт публикуется здесь
+      - "127.0.0.1:8080:8080"
+
+  server:
+    # Funnel умеет проксировать только на 127.0.0.1 — сервер делит сеть с контейнером Tailscale
+    network_mode: service:tailscale
+    ports: !reset []
+    depends_on:
+      - tailscale

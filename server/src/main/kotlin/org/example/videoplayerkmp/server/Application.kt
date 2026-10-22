@@ -16,7 +16,6 @@ import io.ktor.server.auth.principal
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.BadRequestException
-import io.ktor.server.plugins.origin
 import io.ktor.server.plugins.ratelimit.RateLimit
 import io.ktor.server.plugins.ratelimit.RateLimitName
 import io.ktor.server.plugins.ratelimit.rateLimit
@@ -42,6 +41,7 @@ import org.example.videoplayerkmp.sync.RefreshRequest
 import org.example.videoplayerkmp.sync.RegisterRequest
 import org.example.videoplayerkmp.sync.ServerInfo
 import org.example.videoplayerkmp.sync.SetupRequest
+import java.net.InetAddress
 import java.util.Date
 import kotlin.time.Duration.Companion.minutes
 
@@ -228,9 +228,23 @@ private suspend fun ApplicationCall.requireAdmin(accounts: Accounts): User =
         if (!it.isAdmin) throw ApiException(HttpStatusCode.Forbidden, "forbidden", "Доступно только администратору")
     }
 
-/** За Cloudflare Tunnel все запросы приходят с адреса туннеля — настоящий адрес в заголовке. */
-private fun ApplicationCall.clientAddress(): String =
-    request.headers["CF-Connecting-IP"] ?: request.origin.remoteHost
+/**
+ * Адрес клиента для ограничения попыток входа.
+ *
+ * Сервер стоит за прокси (Tailscale Funnel или Cloudflare Tunnel), поэтому все запросы приходят
+ * с локального адреса, а настоящий прокси дописывает в конец X-Forwarded-For. Берём последнюю запись:
+ * начало заголовка клиент может подделать. Заголовку верим, только если запрос пришёл от локального
+ * прокси, — иначе любой мог бы обойти ограничение, подставив чужой адрес.
+ */
+private fun ApplicationCall.clientAddress(): String {
+    val peer = request.local.remoteAddress
+    val fromLocalProxy = runCatching { InetAddress.getByName(peer).let { it.isLoopbackAddress || it.isSiteLocalAddress } }
+        .getOrDefault(false)
+    if (fromLocalProxy) {
+        request.headers["X-Forwarded-For"]?.split(',')?.map { it.trim() }?.lastOrNull { it.isNotEmpty() }?.let { return it }
+    }
+    return peer
+}
 
 /** Работа с базой и bcrypt — блокирующая, уводим её с потоков обработки запросов. */
 private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
