@@ -43,7 +43,8 @@ fun HomeScreen() {
     val scroll = rememberScrollState()
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 32.dp, vertical = 28.dp)) {
+        val pad = if (LocalCompact.current) 16.dp else 32.dp
+        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = pad, vertical = if (LocalCompact.current) 16.dp else 28.dp)) {
             Text(greeting(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
 
@@ -185,7 +186,7 @@ fun PlaylistCover(playlist: Playlist, modifier: Modifier) {
 }
 
 @Composable
-private fun GradientCover(icon: ImageVector, modifier: Modifier) {
+internal fun GradientCover(icon: ImageVector, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     Box(
         modifier.background(Brush.linearGradient(listOf(colors.primaryContainer, colors.primary.copy(alpha = 0.55f)))),
@@ -206,39 +207,55 @@ private fun CollectionHeader(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val player = LocalPlayer.current
-    Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 28.dp, bottom = 20.dp), verticalAlignment = Alignment.Bottom) {
-        Box(Modifier.size(168.dp).clip(RoundedCornerShape(8.dp))) { cover(Modifier.fillMaxSize()) }
-        Spacer(Modifier.width(24.dp))
-        Column(Modifier.weight(1f)) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                title,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                if (tracks.isEmpty()) "Пока пусто" else "${tracksCount(tracks.size)} · ${formatTotalDuration(tracks)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { player.playTracks(tracks) }, enabled = tracks.isNotEmpty()) {
-                    Icon(Icons.Rounded.PlayArrow, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Слушать")
-                }
-                OutlinedButton(onClick = { player.playTracks(tracks, shuffle = true) }, enabled = tracks.isNotEmpty()) {
-                    Icon(Icons.Rounded.Shuffle, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Перемешать")
-                }
-                actions()
+    val compact = LocalCompact.current
+    val info = @Composable {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            title,
+            style = if (compact) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (tracks.isEmpty()) "Пока пусто" else "${tracksCount(tracks.size)} · ${formatTotalDuration(tracks)}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(16.dp))
+        // На узком экране кнопки переносятся на следующую строку
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(onClick = { player.playTracks(tracks) }, enabled = tracks.isNotEmpty()) {
+                Icon(Icons.Rounded.PlayArrow, null, Modifier.size(20.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Слушать")
             }
+            OutlinedButton(onClick = { player.playTracks(tracks, shuffle = true) }, enabled = tracks.isNotEmpty()) {
+                Icon(Icons.Rounded.Shuffle, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Перемешать")
+            }
+            actions()
+        }
+    }
+    if (compact) {
+        // Телефон: обложка сверху, текст под ней
+        Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 16.dp, bottom = 12.dp)) {
+            Box(Modifier.size(160.dp).clip(RoundedCornerShape(8.dp))) { cover(Modifier.fillMaxSize()) }
+            Spacer(Modifier.height(16.dp))
+            info()
+        }
+    } else {
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 28.dp, bottom = 20.dp), verticalAlignment = Alignment.Bottom) {
+            Box(Modifier.size(168.dp).clip(RoundedCornerShape(8.dp))) { cover(Modifier.fillMaxSize()) }
+            Spacer(Modifier.width(24.dp))
+            Column(Modifier.weight(1f)) { info() }
         }
     }
 }

@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.example.videoplayerkmp.data.Track
 import org.example.videoplayerkmp.data.formatDuration
@@ -117,12 +118,18 @@ fun PlayerBar(queueVisible: Boolean, onToggleQueue: () -> Unit) {
 }
 
 @Composable
-private fun PlayPauseButton(isPlaying: Boolean, isBuffering: Boolean, enabled: Boolean, onClick: () -> Unit) {
+internal fun PlayPauseButton(
+    isPlaying: Boolean,
+    isBuffering: Boolean,
+    enabled: Boolean,
+    size: Dp = 42.dp,
+    onClick: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     FilledIconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(42.dp),
+        modifier = Modifier.size(size),
         shape = CircleShape,
         colors = IconButtonDefaults.filledIconButtonColors(
             containerColor = colors.onSurface,
@@ -131,15 +138,19 @@ private fun PlayPauseButton(isPlaying: Boolean, isBuffering: Boolean, enabled: B
         ),
     ) {
         if (isBuffering) {
-            CircularProgressIndicator(Modifier.size(18.dp), color = colors.surface, strokeWidth = 2.dp)
+            CircularProgressIndicator(Modifier.size(size * 0.42f), color = colors.surface, strokeWidth = 2.dp)
         } else {
-            Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Пауза" else "Слушать")
+            Icon(
+                if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                if (isPlaying) "Пауза" else "Слушать",
+                Modifier.size(size * 0.55f),
+            )
         }
     }
 }
 
 @Composable
-private fun ProgressRow(enabled: Boolean, duration: Double) {
+internal fun ProgressRow(enabled: Boolean, duration: Double) {
     val player = LocalPlayer.current
     val position by player.position.collectAsState()
     // Пока пользователь тянет ползунок, показываем его значение, а не реальную позицию
@@ -303,7 +314,7 @@ fun NowPlayingPanel(onClose: () -> Unit) {
 }
 
 @Composable
-private fun QueueRow(track: Track, onClick: () -> Unit, onRemove: () -> Unit) {
+internal fun QueueRow(track: Track, onClick: () -> Unit, onRemove: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()

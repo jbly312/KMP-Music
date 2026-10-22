@@ -134,7 +134,7 @@ fun SpotifyImportDialog(onDismiss: () -> Unit) {
         onDismissRequest = { if (!importer.isBusy) onDismiss() },
         title = { Text("Импорт из Spotify") },
         text = {
-            Box(Modifier.widthIn(min = 420.dp, max = 460.dp)) {
+            Box(if (LocalCompact.current) Modifier.fillMaxWidth() else Modifier.widthIn(min = 420.dp, max = 460.dp)) {
                 when (val step = importer.step) {
                     ImportStep.Input -> InputStep(link, { link = it }, linkValid, onSubmit = { importer.importLink(link) }) { fileName, text ->
                         importer.importCsv(fileName, text)

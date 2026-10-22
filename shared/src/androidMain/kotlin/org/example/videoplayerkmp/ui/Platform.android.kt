@@ -1,6 +1,7 @@
 package org.example.videoplayerkmp.ui
 
 import android.provider.OpenableColumns
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ScrollState
@@ -39,3 +40,6 @@ actual fun rememberCsvPicker(onPicked: (fileName: String, text: String) -> Unit)
     // Многие файловые менеджеры отдают CSV как text/plain или text/comma-separated-values
     return { launcher.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "application/octet-stream")) }
 }
+
+@Composable
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = BackHandler(enabled, onBack)

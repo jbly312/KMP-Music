@@ -177,7 +177,8 @@ fun SearchScreen(state: SearchState) {
     val showSuggestions = state.suggestions.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(start = 32.dp, end = 32.dp, top = 28.dp, bottom = 8.dp)) {
+        val pad = if (LocalCompact.current) 16.dp else 32.dp
+        Column(Modifier.padding(start = pad, end = pad, top = if (LocalCompact.current) 12.dp else 28.dp, bottom = 8.dp)) {
             Box {
                 OutlinedTextField(
                     value = state.query,

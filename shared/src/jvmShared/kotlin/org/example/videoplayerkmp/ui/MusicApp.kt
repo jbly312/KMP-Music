@@ -19,6 +19,9 @@ import org.example.videoplayerkmp.player.PlayerController
 /** Ниже этой ширины окна боковая панель сама сворачивается до иконок. */
 private val CompactWidth = 1100.dp
 
+/** Уже этого — телефон: нижняя навигация и мини-плеер вместо боковой панели и панели плеера. */
+private val PhoneWidth = 600.dp
+
 @Composable
 fun MusicApp(player: PlayerController, library: Library, navigator: Navigator, searchState: SearchState) {
     val playerState by player.state.collectAsState()
@@ -64,6 +67,12 @@ fun MusicApp(player: PlayerController, library: Library, navigator: Navigator, s
         ) {
             Surface(color = MaterialTheme.colorScheme.background) {
                 BoxWithConstraints(Modifier.fillMaxSize()) {
+                    if (maxWidth < PhoneWidth) {
+                        CompositionLocalProvider(LocalCompact provides true) {
+                            PhoneLayout(navigator, searchState, snackbar)
+                        }
+                        return@BoxWithConstraints
+                    }
                     val compact = maxWidth < CompactWidth
                     // При пересечении порога снова решает ширина окна, а не прошлый выбор
                     LaunchedEffect(compact) { sidebarPreference = null }
@@ -74,22 +83,8 @@ fun MusicApp(player: PlayerController, library: Library, navigator: Navigator, s
                             Sidebar(sidebarExpanded, onToggle = { sidebarPreference = !sidebarExpanded })
                             Box(Modifier.weight(1f).fillMaxHeight()) {
                                 if (playerState.current != null) AmbientGlow()
-                                when (val screen = navigator.screen) {
-                                    Screen.Home -> HomeScreen()
-                                    Screen.Search -> SearchScreen(searchState)
-                                    Screen.Favorites -> FavoritesScreen()
-                                    Screen.History -> HistoryScreen()
-                                    is Screen.PlaylistView -> PlaylistScreen(screen.id)
-                                }
-                                SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(16.dp)) { data ->
-                                    Snackbar(
-                                        data,
-                                        shape = MaterialTheme.shapes.medium,
-                                        containerColor = MaterialTheme.colorScheme.inverseSurface,
-                                        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                                        actionColor = MaterialTheme.colorScheme.inverseOnSurface,
-                                    )
-                                }
+                                ScreenContent(navigator, searchState)
+                                AppSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(16.dp))
                             }
                             AnimatedVisibility(
                                 visible = panelVisible,
@@ -109,9 +104,35 @@ fun MusicApp(player: PlayerController, library: Library, navigator: Navigator, s
     }
 }
 
+/** Текущий экран — общий для раскладок ПК и телефона. */
+@Composable
+internal fun ScreenContent(navigator: Navigator, searchState: SearchState) {
+    when (val screen = navigator.screen) {
+        Screen.Home -> HomeScreen()
+        Screen.Search -> SearchScreen(searchState)
+        Screen.Library -> LibraryScreen()
+        Screen.Favorites -> FavoritesScreen()
+        Screen.History -> HistoryScreen()
+        is Screen.PlaylistView -> PlaylistScreen(screen.id)
+    }
+}
+
+@Composable
+internal fun AppSnackbarHost(state: SnackbarHostState, modifier: Modifier) {
+    SnackbarHost(state, modifier) { data ->
+        Snackbar(
+            data,
+            shape = MaterialTheme.shapes.medium,
+            containerColor = MaterialTheme.colorScheme.inverseSurface,
+            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            actionColor = MaterialTheme.colorScheme.inverseOnSurface,
+        )
+    }
+}
+
 /** Мягкое свечение цвета обложки под заголовком страницы. */
 @Composable
-private fun AmbientGlow() {
+internal fun AmbientGlow() {
     val alpha = if (LocalIsDark.current) 0.20f else 0.12f
     Box(
         Modifier.fillMaxWidth().height(340.dp).background(

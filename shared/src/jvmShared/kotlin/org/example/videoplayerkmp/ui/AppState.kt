@@ -2,6 +2,7 @@ package org.example.videoplayerkmp.ui
 
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -15,17 +16,37 @@ import org.example.videoplayerkmp.player.PlayerState
 sealed interface Screen {
     data object Home : Screen
     data object Search : Screen
+    /** Избранное, история и плейлисты одним списком — раздел нижней навигации на телефоне */
+    data object Library : Screen
     data object Favorites : Screen
     data object History : Screen
     data class PlaylistView(val id: String) : Screen
 }
 
+/** Текущий экран и история переходов — для системной кнопки «Назад» на телефоне. */
 class Navigator {
     var screen: Screen by mutableStateOf(Screen.Home)
         private set
+    private val backStack = mutableStateListOf<Screen>()
+
+    val canGoBack: Boolean get() = backStack.isNotEmpty()
 
     fun go(screen: Screen) {
+        if (screen == this.screen) return
+        backStack += this.screen
         this.screen = screen
+    }
+
+    /** Переход на раздел нижней навигации: история начинается заново. */
+    fun goTab(screen: Screen) {
+        backStack.clear()
+        this.screen = screen
+    }
+
+    fun back(): Boolean {
+        val previous = backStack.removeLastOrNull() ?: return false
+        screen = previous
+        return true
     }
 }
 
@@ -65,3 +86,6 @@ val LocalNotifier = staticCompositionLocalOf { Notifier { _, _, _ -> } }
 val LocalPlayerState = compositionLocalOf { PlayerState() }
 val LocalLibraryData = compositionLocalOf { LibraryData() }
 val LocalFavoriteIds = compositionLocalOf { emptySet<String>() }
+
+/** Узкий экран (телефон): компактные отступы и строки, нижняя навигация вместо боковой панели. */
+val LocalCompact = compositionLocalOf { false }
