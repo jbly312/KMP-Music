@@ -1,5 +1,6 @@
-# KMP Music — сервер синхронизации + Cloudflare Tunnel.
-# Запуск: заполните .env (см. .env.example) и выполните `docker compose up -d`.
+# KMP Music — сервер синхронизации.
+# Доступ из интернета: Tailscale Funnel (docker-compose.tailscale.yml) или Cloudflare Tunnel (профиль tunnel).
+# Подробно — docs/self-hosting.md
 
 services:
   server:
@@ -13,7 +14,7 @@ services:
       - ./data:/data
     ports:
       # Доступ только с этого компьютера (десктоп-приложение может подключаться к http://localhost:8080).
-      # Снаружи сервер доступен только через туннель
+      # Снаружи сервер доступен только через Funnel или туннель
       - "127.0.0.1:8080:8080"
 
   # Туннель включается строкой COMPOSE_PROFILES=tunnel в .env.

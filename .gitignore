@@ -19,3 +19,4 @@ captures
 node_modules/
 deploy/.env
 deploy/data/
+deploy/tailscale/state/
