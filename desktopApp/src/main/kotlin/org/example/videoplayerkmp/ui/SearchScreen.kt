@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -169,11 +168,13 @@ fun SearchScreen(state: SearchState) {
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val focus = remember { FocusRequester() }
-    var focused by remember { mutableStateOf(false) }
     var fieldSize by remember { mutableStateOf(IntSize.Zero) }
     // Подсказка, выбранная стрелками ↑/↓; -1 — никакая
     var highlighted by remember(state.suggestions) { mutableStateOf(-1) }
-    val showSuggestions = focused && state.suggestions.isNotEmpty()
+    // Видимость не завязана на фокус поля: в настоящем окне нажатие на подсказку снимает фокус
+    // ещё до отпускания кнопки, и список исчезал раньше, чем срабатывал клик.
+    // Список закрывается выбором, Esc или кликом мимо (onDismissRequest)
+    val showSuggestions = state.suggestions.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(start = 32.dp, end = 32.dp, top = 28.dp, bottom = 8.dp)) {
@@ -202,7 +203,6 @@ fun SearchScreen(state: SearchState) {
                         .fillMaxWidth()
                         .onSizeChanged { fieldSize = it }
                         .focusRequester(focus)
-                        .onFocusChanged { focused = it.isFocused }
                         .onPreviewKeyEvent {
                             if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                             val count = state.suggestions.size

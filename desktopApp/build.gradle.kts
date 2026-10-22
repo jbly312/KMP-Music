@@ -29,6 +29,9 @@ dependencies {
     // Поиск и получение аудиопотоков YouTube
     implementation(libs.newpipe.extractor)
 
+    // Медиаклавиши (Fn + ⏯ ⏭ ⏮) — Java сама их не получает, нужен системный перехватчик клавиатуры
+    implementation(libs.jnativehook)
+
     // Хранение библиотеки (избранное, плейлисты, история)
     implementation(libs.kotlinx.serializationJson)
 
@@ -46,11 +49,11 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "KMP Music"
             // При выпуске новой версии увеличивайте номер — установщик обновит приложение поверх старого
-            packageVersion = "1.1.0"
+            packageVersion = "1.1.2"
             description = "Music streaming player"
             vendor = "KMP Music"
-            // jdk.httpserver — локальный прокси для потокового воспроизведения
-            modules("java.net.http", "jdk.httpserver", "jdk.unsupported", "java.naming")
+            // jdk.httpserver — локальный прокси для потокового воспроизведения, java.logging — для JNativeHook
+            modules("java.net.http", "jdk.httpserver", "jdk.unsupported", "java.naming", "java.logging")
 
             windows {
                 iconFile.set(project.file("icons/app.ico"))

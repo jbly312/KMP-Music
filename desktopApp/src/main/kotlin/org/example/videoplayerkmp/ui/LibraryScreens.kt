@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.example.videoplayerkmp.data.Playlist
 import org.example.videoplayerkmp.data.Track
+import org.example.videoplayerkmp.data.TrackSort
 import org.example.videoplayerkmp.data.formatTotalDuration
 import org.example.videoplayerkmp.data.tracksCount
 import java.time.LocalTime
@@ -293,17 +295,25 @@ fun HistoryScreen() {
 fun PlaylistScreen(id: String) {
     val navigator = LocalNavigator.current
     val dialogs = LocalDialogs.current
+    val library = LocalLibrary.current
     val playlist = LocalLibraryData.current.playlists.find { it.id == id }
     if (playlist == null) {
         LaunchedEffect(id) { navigator.go(Screen.Home) }
         return
     }
+    // Порядок на экране — он же порядок воспроизведения
+    val tracks = playlist.displayedTracks
     TrackList(
-        tracks = playlist.tracks,
+        tracks = tracks,
         modifier = Modifier.fillMaxSize(),
         playlistId = playlist.id,
+        // Перетаскивать можно только в своём порядке: в отсортированном виде место трека задаёт сортировка
+        onMove = if (playlist.sort == TrackSort.CUSTOM && tracks.size > 1) {
+            { from, to -> library.moveInPlaylist(playlist.id, from, to) }
+        } else null,
         header = {
-            CollectionHeader("Плейлист", playlist.name, playlist.tracks, { PlaylistCover(playlist, it) }) {
+            CollectionHeader("Плейлист", playlist.name, tracks, { PlaylistCover(playlist, it) }) {
+                SortButton(playlist.sort, enabled = playlist.tracks.size > 1) { library.setPlaylistSort(playlist.id, it) }
                 Tip("Переименовать") {
                     IconButton(onClick = { dialogs.show(DialogRequest.RenamePlaylist(playlist)) }) { Icon(Icons.Rounded.Edit, "Переименовать") }
                 }
@@ -322,4 +332,37 @@ fun PlaylistScreen(id: String) {
             }
         },
     )
+}
+
+/** Выбор сортировки треков; текущий режим подписан на самой кнопке. */
+@Composable
+private fun SortButton(current: TrackSort, enabled: Boolean, onSelect: (TrackSort) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Tip("Сортировка треков") {
+            TextButton(onClick = { expanded = true }, enabled = enabled) {
+                Icon(Icons.AutoMirrored.Rounded.Sort, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(current.title)
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            TrackSort.entries.forEach { sort ->
+                DropdownMenuItem(
+                    text = { Text(sort.title) },
+                    onClick = {
+                        onSelect(sort)
+                        expanded = false
+                    },
+                    leadingIcon = {
+                        if (sort == current) Icon(Icons.Rounded.Check, null, Modifier.size(18.dp))
+                        else Spacer(Modifier.size(18.dp))
+                    },
+                    trailingIcon = if (sort == TrackSort.CUSTOM) {
+                        { Text("перетаскивание", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    } else null,
+                )
+            }
+        }
+    }
 }
