@@ -1,0 +1,8 @@
+# Сборка образа из исходников этого репозитория — вместо готового образа из GHCR.
+# Запуск из папки deploy:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  server:
+    image: kmp-music-server:local
+    build:
+      context: ..
