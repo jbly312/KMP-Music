@@ -2,8 +2,6 @@ package org.example.videoplayerkmp.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.LocalScrollbarStyle
-import androidx.compose.foundation.ScrollbarStyle
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
@@ -108,18 +106,9 @@ fun AppTheme(artworkSeed: Color?, content: @Composable () -> Unit) {
     val accent by animateColorAsState(target, tween(durationMillis = 700), label = "accent")
 
     MaterialTheme(colorScheme = base.withAccent(accent, dark), typography = AppTypography) {
-        CompositionLocalProvider(
-            LocalIsDark provides dark,
-            LocalScrollbarStyle provides ScrollbarStyle(
-                minimalHeight = 32.dp,
-                thickness = 8.dp,
-                shape = RoundedCornerShape(4.dp),
-                hoverDurationMillis = 300,
-                unhoverColor = base.onSurface.copy(alpha = 0.12f),
-                hoverColor = base.onSurface.copy(alpha = 0.32f),
-            ),
-            content = content,
-        )
+        CompositionLocalProvider(LocalIsDark provides dark) {
+            ScrollbarTheme(content)
+        }
     }
 }
 

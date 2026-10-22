@@ -38,9 +38,6 @@ import org.example.videoplayerkmp.data.SpotifySource
 import org.example.videoplayerkmp.data.SpotifyTrack
 import org.example.videoplayerkmp.data.Track
 import org.example.videoplayerkmp.data.TrackMatcher
-import java.awt.FileDialog
-import java.awt.Frame
-import java.io.File
 
 private sealed interface ImportStep {
     data object Input : ImportStep
@@ -67,7 +64,7 @@ private class SpotifyImporter(private val scope: CoroutineScope, private val lib
 
     fun importLink(link: String) = start { Spotify.fetch(link) }
 
-    fun importCsv(file: File) = start { withContext(Dispatchers.IO) { Spotify.parseCsv(file) } }
+    fun importCsv(fileName: String, text: String) = start { withContext(Dispatchers.Default) { Spotify.parseCsv(fileName, text) } }
 
     fun reset() {
         job?.cancel()
@@ -139,8 +136,8 @@ fun SpotifyImportDialog(onDismiss: () -> Unit) {
         text = {
             Box(Modifier.widthIn(min = 420.dp, max = 460.dp)) {
                 when (val step = importer.step) {
-                    ImportStep.Input -> InputStep(link, { link = it }, linkValid, onSubmit = { importer.importLink(link) }) { file ->
-                        importer.importCsv(file)
+                    ImportStep.Input -> InputStep(link, { link = it }, linkValid, onSubmit = { importer.importLink(link) }) { fileName, text ->
+                        importer.importCsv(fileName, text)
                     }
                     ImportStep.Loading -> ProgressStep("Загружаем плейлист…", null, null)
                     is ImportStep.Matching -> ProgressStep(
@@ -184,7 +181,7 @@ private fun InputStep(
     onLinkChange: (String) -> Unit,
     linkValid: Boolean,
     onSubmit: () -> Unit,
-    onCsv: (File) -> Unit,
+    onCsv: (fileName: String, text: String) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val focus = remember { FocusRequester() }
@@ -215,7 +212,8 @@ private fun InputStep(
             HorizontalDivider(Modifier.weight(1f), color = colors.outlineVariant)
         }
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = { chooseCsv()?.let(onCsv) }, modifier = Modifier.fillMaxWidth()) {
+        val pickCsv = rememberCsvPicker(onCsv)
+        OutlinedButton(onClick = pickCsv, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Rounded.Description, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Выбрать CSV-файл…")
@@ -307,13 +305,3 @@ private fun DoneStep(step: ImportStep.Done) {
     }
 }
 
-/** Системный диалог выбора файла. */
-private fun chooseCsv(): File? {
-    val dialog = FileDialog(null as Frame?, "Выберите CSV-файл плейлиста", FileDialog.LOAD).apply {
-        file = "*.csv"
-        setFilenameFilter { _, name -> name.endsWith(".csv", ignoreCase = true) }
-        isVisible = true
-    }
-    val name = dialog.file ?: return null
-    return File(dialog.directory, name)
-}

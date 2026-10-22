@@ -6,7 +6,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.graphicsLayer
@@ -16,8 +15,6 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.animation.core.RepeatMode as AnimationRepeatMode
-import androidx.compose.foundation.TooltipArea
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
@@ -28,7 +25,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
@@ -57,30 +53,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collect
 import org.example.videoplayerkmp.data.Track
 import org.example.videoplayerkmp.data.formatDuration
-import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
-import java.net.URI
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
 
 // ---------- Мелкие элементы ----------
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun Tip(text: String, content: @Composable () -> Unit) {
-    TooltipArea(
-        tooltip = {
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shadowElevation = 6.dp,
-            ) {
-                Text(text, Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
-            }
-        },
-        delayMillis = 500,
-        content = content,
-    )
-}
 
 @Composable
 fun ToggleIcon(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
@@ -269,8 +246,8 @@ fun TrackList(
             }
             if (footer != null) item(key = "footer") { footer() }
         }
-        VerticalScrollbar(
-            rememberScrollbarAdapter(state),
+        ListScrollbar(
+            state,
             Modifier.align(Alignment.CenterEnd).fillMaxHeight().padding(vertical = 4.dp, horizontal = 2.dp),
         )
     }
@@ -415,6 +392,9 @@ fun TrackMenuButton(track: Track, playlistId: String? = null) {
     val notifier = LocalNotifier.current
     val playlists = LocalLibraryData.current.playlists
     val isFavorite = track.id in LocalFavoriteIds.current
+    @Suppress("DEPRECATION") // LocalClipboard требует платформенный ClipEntry; для строки хватает старого API
+    val clipboard = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
     var expanded by remember { mutableStateOf(false) }
     var choosingPlaylist by remember { mutableStateOf(false) }
 
@@ -455,11 +435,11 @@ fun TrackMenuButton(track: Track, playlistId: String? = null) {
                 }
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 MenuItem(Icons.Rounded.Link, "Копировать ссылку") {
-                    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(track.url), null)
+                    clipboard.setText(AnnotatedString(track.url))
                     notifier.notify("Ссылка скопирована"); close()
                 }
                 MenuItem(Icons.AutoMirrored.Rounded.OpenInNew, "Открыть на YouTube") {
-                    runCatching { Desktop.getDesktop().browse(URI(track.url)) }; close()
+                    runCatching { uriHandler.openUri(track.url) }; close()
                 }
             } else {
                 MenuItem(Icons.Rounded.Add, "Новый плейлист…") {

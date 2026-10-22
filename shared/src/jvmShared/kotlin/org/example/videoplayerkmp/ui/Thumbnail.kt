@@ -25,12 +25,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import java.net.URI
 
 /** Загрузка обложек с кэшем в памяти. */
@@ -52,7 +52,7 @@ object ImageLoader {
                         readTimeout = 15_000
                     }
                     val bytes = connection.getInputStream().use { it.readBytes() }
-                    org.jetbrains.skia.Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                    bytes.decodeToImageBitmap()
                 }.getOrNull()?.also { synchronized(cache) { cache[url] = it } }
             }
         }

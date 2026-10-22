@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.kotlinSerialization)
 }
 
 // Классификатор JavaFX: без него Gradle берёт пустые jar-ы без нативных библиотек
@@ -19,21 +18,13 @@ val javafxPlatform: String = run {
 }
 
 dependencies {
+    // Всё приложение (данные, YouTube, очередь, интерфейс) — в общем модуле
     implementation(project(":shared"))
     implementation(compose.desktop.currentOs)
     implementation(libs.kotlinx.coroutinesSwing)
-    implementation(libs.compose.uiToolingPreview)
-    implementation(compose.material3)
-    implementation(libs.compose.materialIconsExtended)
-
-    // Поиск и получение аудиопотоков YouTube
-    implementation(libs.newpipe.extractor)
 
     // Медиаклавиши (Fn + ⏯ ⏭ ⏮) — Java сама их не получает, нужен системный перехватчик клавиатуры
     implementation(libs.jnativehook)
-
-    // Хранение библиотеки (избранное, плейлисты, история)
-    implementation(libs.kotlinx.serializationJson)
 
     // Воспроизведение аудио — JavaFX Media с нативными библиотеками под текущую ОС
     listOf("base", "graphics", "media").forEach {

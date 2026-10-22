@@ -10,7 +10,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
-import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
@@ -82,8 +81,8 @@ object Spotify {
      * CSV, выгруженный через Exportify (exportify.app) или похожие сервисы.
      * Нужны колонки с названием и исполнителем; длительность — по возможности.
      */
-    fun parseCsv(file: File): SpotifySource {
-        val rows = parseCsvRows(file.readText().removePrefix("﻿"))
+    fun parseCsv(fileName: String, text: String): SpotifySource {
+        val rows = parseCsvRows(text.removePrefix("﻿"))
         if (rows.size < 2) throw IOException("Файл пустой")
         val header = rows.first().map { it.trim().lowercase() }
         fun column(vararg names: String) = header.indexOfFirst { h -> names.any { h == it } }
@@ -105,7 +104,7 @@ object Spotify {
             )
         }
         if (tracks.isEmpty()) throw IOException("В файле нет треков")
-        return SpotifySource(file.nameWithoutExtension.replace('_', ' '), tracks)
+        return SpotifySource(fileName.substringBeforeLast('.').replace('_', ' '), tracks)
     }
 
     /** CSV по RFC 4180: запятые и переводы строк внутри кавычек, "" — экранированная кавычка. */
