@@ -19,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import org.example.videoplayerkmp.data.AppDirs
 import org.example.videoplayerkmp.data.Library
 import org.example.videoplayerkmp.player.AudioCache
+import org.example.videoplayerkmp.player.JavaFxEngine
 import org.example.videoplayerkmp.player.MediaKeys
 import org.example.videoplayerkmp.player.PlayerController
 import org.example.videoplayerkmp.player.StreamServer
@@ -35,7 +36,7 @@ fun main() {
     val library = Library(File(AppDirs.data, "library.json"))
     val cache = AudioCache(AppDirs.cache)
     val server = StreamServer(cache)
-    val player = PlayerController(cache, server, library)
+    val player = PlayerController(JavaFxEngine(cache, server), library)
     player.warmUp()
     MediaKeys.start(player)
     val searchState = SearchState(CoroutineScope(SupervisorJob() + Dispatchers.Main), player)

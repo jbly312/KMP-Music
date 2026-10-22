@@ -37,5 +37,6 @@ include(":server")
 // В Docker собирается только сервер: без Compose-модулей сборка образа быстрее и легче
 if (System.getenv("KMP_SERVER_ONLY") == null) {
     include(":desktopApp")
+    include(":androidApp")
     include(":shared")
 }
