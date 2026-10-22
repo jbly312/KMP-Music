@@ -44,13 +44,15 @@
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
    ```
-4. Узнайте адрес сервера:
+4. Разрешите Funnel в своей сети Tailscale (один раз). Выполните:
    ```bash
-   docker exec kmp-music-tailscale tailscale funnel status
+   docker exec kmp-music-tailscale tailscale funnel --bg --yes 8080
    ```
-   В выводе будет строка вида `https://kmp-music.tailXXXX.ts.net (Funnel on)`.
-5. Откройте `https://kmp-music.tailXXXX.ts.net/health` — должно быть `ok`. Публичная DNS-запись
-   появляется не сразу: если адрес не открывается, подождите до 10 минут.
+   Если Funnel ещё не разрешён, команда напечатает ссылку `https://login.tailscale.com/f/funnel?node=…` —
+   откройте её, подтвердите и выполните команду ещё раз. Без этого шага сервер молча не публикуется:
+   `tailscale funnel status` показывает «Funnel on», но адрес из интернета не открывается.
+5. В выводе будет адрес вида `https://kmp-music.tailXXXX.ts.net`. Откройте `…/health` — должно быть `ok`.
+   Публичная DNS-запись появляется не сразу: если адрес не открывается, подождите до 10 минут.
 
 На Windows включите в Docker Desktop **Settings → General → Start Docker Desktop when you sign in**,
 чтобы сервер поднимался сам после перезагрузки.
