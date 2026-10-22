@@ -22,8 +22,30 @@ import java.util.UUID
 data class Playlist(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
+    /** Свой порядок треков; сортировка [sort] его не меняет, а только показывает иначе */
     val tracks: List<Track> = emptyList(),
-)
+    val sort: TrackSort = TrackSort.CUSTOM,
+) {
+    /** Треки в том порядке, в каком их видно и в каком они играют. */
+    val displayedTracks: List<Track> get() = sort.apply(tracks)
+}
+
+@Serializable
+enum class TrackSort(val title: String) {
+    CUSTOM("Свой порядок"),
+    TITLE("Название"),
+    ARTIST("Исполнитель"),
+    DURATION("Длительность");
+
+    fun apply(tracks: List<Track>): List<Track> = when (this) {
+        CUSTOM -> tracks
+        TITLE -> tracks.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
+        ARTIST -> tracks.sortedWith(
+            compareBy<Track, String>(String.CASE_INSENSITIVE_ORDER) { it.artist }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.title }
+        )
+        DURATION -> tracks.sortedBy { it.durationSec }
+    }
+}
 
 @Serializable
 data class LibraryData(
@@ -85,9 +107,22 @@ class Library(private val file: File) {
         p.copy(tracks = p.tracks.toMutableList().apply { add(index.coerceIn(0, size), track) })
     }
 
-    fun removeFromPlaylist(id: String, index: Int) = updatePlaylist(id) { p ->
-        p.copy(tracks = p.tracks.filterIndexed { i, _ -> i != index })
+    /**
+     * Удаляет трек по id, а не по номеру строки: при сортировке номер на экране
+     * не совпадает с позицией в плейлисте. Возвращает прежнюю позицию — для «Отменить».
+     */
+    fun removeFromPlaylist(id: String, trackId: String): Int {
+        val index = _data.value.playlists.find { it.id == id }?.tracks?.indexOfFirst { it.id == trackId } ?: -1
+        if (index >= 0) updatePlaylist(id) { p -> p.copy(tracks = p.tracks.filterNot { it.id == trackId }) }
+        return index
     }
+
+    fun moveInPlaylist(id: String, from: Int, to: Int) = updatePlaylist(id) { p ->
+        if (from !in p.tracks.indices || to !in p.tracks.indices) p
+        else p.copy(tracks = p.tracks.toMutableList().apply { add(to, removeAt(from)) })
+    }
+
+    fun setPlaylistSort(id: String, sort: TrackSort) = updatePlaylist(id) { it.copy(sort = sort) }
 
     fun setVolume(volume: Float) = _data.update { it.copy(volume = volume) }
 

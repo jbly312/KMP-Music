@@ -19,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import org.example.videoplayerkmp.data.AppDirs
 import org.example.videoplayerkmp.data.Library
 import org.example.videoplayerkmp.player.AudioCache
+import org.example.videoplayerkmp.player.MediaKeys
 import org.example.videoplayerkmp.player.PlayerController
 import org.example.videoplayerkmp.player.StreamServer
 import org.example.videoplayerkmp.ui.MusicApp
@@ -29,17 +30,21 @@ import java.awt.Dimension
 import java.io.File
 
 fun main() {
+    // Вторая копия не запускается — вместо этого показывается окно первой
+    if (!SingleInstance.acquire(AppDirs.data)) return
     val library = Library(File(AppDirs.data, "library.json"))
     val cache = AudioCache(AppDirs.cache)
     val server = StreamServer(cache)
     val player = PlayerController(cache, server, library)
     player.warmUp()
+    MediaKeys.start(player)
     val searchState = SearchState(CoroutineScope(SupervisorJob() + Dispatchers.Main), player)
 
     application {
         val navigator = remember { Navigator() }
         Window(
             onCloseRequest = {
+                MediaKeys.stop()
                 player.shutdown()
                 library.flush()
                 server.stop()
@@ -62,6 +67,7 @@ fun main() {
             },
         ) {
             window.minimumSize = Dimension(860, 600)
+            SingleInstance.window = window
             MusicApp(player, library, navigator, searchState)
         }
     }

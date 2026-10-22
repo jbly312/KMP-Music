@@ -7,7 +7,12 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.animation.core.RepeatMode as AnimationRepeatMode
@@ -209,9 +214,33 @@ fun TrackList(
     footer: (@Composable () -> Unit)? = null,
     /** По умолчанию весь список становится очередью; поиск вместо этого запускает радио. */
     onPlay: ((index: Int) -> Unit)? = null,
+    /** Если задан — у строк появляется ручка, за которую их можно перетаскивать. */
+    onMove: ((from: Int, to: Int) -> Unit)? = null,
 ) {
     val player = LocalPlayer.current
     val playerState = LocalPlayerState.current
+    val scope = rememberCoroutineScope()
+    val headerCount = if (header != null) 1 else 0
+    val currentHeaderCount by rememberUpdatedState(headerCount)
+    val currentSize by rememberUpdatedState(tracks.size)
+    val currentOnMove by rememberUpdatedState(onMove)
+    val dragState = remember(state) {
+        DragDropState(
+            list = state,
+            scope = scope,
+            canMoveTo = { it - currentHeaderCount in 0 until currentSize },
+            onMove = { from, to -> currentOnMove?.invoke(from - currentHeaderCount, to - currentHeaderCount) },
+        )
+    }
+    // Ключи не зависят от позиции: иначе при перетаскивании строка пересоздаётся и «отпускается»
+    val keys = remember(tracks) {
+        val seen = HashMap<String, Int>()
+        tracks.map { t ->
+            val n = (seen[t.id] ?: 0) + 1
+            seen[t.id] = n
+            if (n == 1) t.id else "${t.id}#$n"
+        }
+    }
     Box(modifier) {
         LazyColumn(
             state = state,
@@ -219,7 +248,9 @@ fun TrackList(
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
         ) {
             if (header != null) item(key = "header") { header() }
-            itemsIndexed(tracks, key = { i, t -> "${t.id}#$i" }) { i, track ->
+            itemsIndexed(tracks, key = { i, _ -> keys[i] }) { i, track ->
+                val lazyIndex by rememberUpdatedState(i + headerCount)
+                val dragging = dragState.draggingIndex == i + headerCount
                 TrackRow(
                     track = track,
                     index = i,
@@ -227,6 +258,13 @@ fun TrackList(
                     isPlaying = playerState.isPlaying,
                     playlistId = playlistId,
                     onPlay = { onPlay?.invoke(i) ?: player.playTracks(tracks, i) },
+                    dragHandle = if (onMove != null) Modifier.dragHandle(dragState) { lazyIndex } else null,
+                    dragging = dragging,
+                    modifier = if (dragging) {
+                        Modifier.zIndex(1f).graphicsLayer { translationY = dragState.draggingOffset }
+                    } else {
+                        Modifier.animateItem()
+                    },
                 )
             }
             if (footer != null) item(key = "footer") { footer() }
@@ -256,25 +294,41 @@ fun TrackRow(
     isPlaying: Boolean,
     playlistId: String?,
     onPlay: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Модификатор ручки перетаскивания; null — строку перетаскивать нельзя */
+    dragHandle: Modifier? = null,
+    dragging: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val background = when {
+        dragging -> colors.surfaceContainerHighest
         hovered -> colors.surfaceContainerHigh
         isCurrent -> colors.primary.copy(alpha = 0.10f)
         else -> Color.Transparent
     }
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .height(56.dp)
+            .then(if (dragging) Modifier.shadow(10.dp, RoundedCornerShape(10.dp)) else Modifier)
             .hoverable(interaction)
             .background(background, RoundedCornerShape(10.dp))
             .clickable(onClick = onPlay)
-            .padding(start = 6.dp, end = 4.dp),
+            .padding(start = if (dragHandle != null) 0.dp else 6.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (dragHandle != null) {
+            Box(
+                Modifier.width(22.dp).fillMaxHeight().pointerHoverIcon(PointerIcon.Hand).then(dragHandle),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (hovered || dragging) {
+                    Icon(Icons.Rounded.DragIndicator, "Перетащить", Modifier.size(18.dp), tint = colors.onSurfaceVariant)
+                }
+            }
+        }
         Box(Modifier.width(36.dp), contentAlignment = Alignment.Center) {
             when {
                 hovered -> Icon(Icons.Rounded.PlayArrow, "Слушать", Modifier.size(20.dp))
@@ -315,7 +369,7 @@ fun TrackRow(
             modifier = Modifier.width(48.dp),
             textAlign = TextAlign.End,
         )
-        TrackMenuButton(track, playlistId, index)
+        TrackMenuButton(track, playlistId)
     }
 }
 
@@ -354,7 +408,7 @@ fun EqualizerBars(playing: Boolean, color: Color, modifier: Modifier = Modifier)
 }
 
 @Composable
-fun TrackMenuButton(track: Track, playlistId: String? = null, index: Int = -1) {
+fun TrackMenuButton(track: Track, playlistId: String? = null) {
     val player = LocalPlayer.current
     val library = LocalLibrary.current
     val dialogs = LocalDialogs.current
@@ -390,9 +444,11 @@ fun TrackMenuButton(track: Track, playlistId: String? = null, index: Int = -1) {
                 }
                 if (playlistId != null) {
                     MenuItem(Icons.Rounded.RemoveCircleOutline, "Удалить из плейлиста") {
-                        library.removeFromPlaylist(playlistId, index)
-                        notifier.notify("Трек удалён из плейлиста", "Отменить") {
-                            library.insertIntoPlaylist(playlistId, index, track)
+                        val index = library.removeFromPlaylist(playlistId, track.id)
+                        if (index >= 0) {
+                            notifier.notify("Трек удалён из плейлиста", "Отменить") {
+                                library.insertIntoPlaylist(playlistId, index, track)
+                            }
                         }
                         close()
                     }
