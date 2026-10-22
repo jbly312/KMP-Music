@@ -54,6 +54,12 @@
 5. В выводе будет адрес вида `https://kmp-music.tailXXXX.ts.net`. Откройте `…/health` — должно быть `ok`.
    Публичная DNS-запись появляется не сразу: если адрес не открывается, подождите до 10 минут.
 
+   Если и через 10 минут адрес не находится (проверка: `https://dns.google/resolve?name=<ваш адрес>&type=A`
+   не возвращает `Answer`), это известный сбой Tailscale — запись не создаётся
+   ([tailscale/tailscale#21698](https://github.com/tailscale/tailscale/issues/21698)). Помогает переключить
+   разрешение: панель Tailscale → **Access controls** → удалите блок `nodeAttrs` с `"funnel"`, сохраните,
+   через минуту верните и сохраните снова, затем повторите команду из шага 4.
+
 На Windows включите в Docker Desktop **Settings → General → Start Docker Desktop when you sign in**,
 чтобы сервер поднимался сам после перезагрузки.
 
