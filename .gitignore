@@ -20,3 +20,7 @@ node_modules/
 deploy/.env
 deploy/data/
 deploy/tailscale/state/
+
+# Ключ подписи релизного APK (сам ключ хранится вне репозитория)
+keystore.properties
+*.jks

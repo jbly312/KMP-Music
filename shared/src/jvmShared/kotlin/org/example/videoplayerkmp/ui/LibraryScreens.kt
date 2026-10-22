@@ -56,7 +56,11 @@ fun HomeScreen() {
                         "Когда трек закончится, автоплей подберёт похожие.",
                 ) {
                     val dialogs = LocalDialogs.current
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // На узком экране кнопки переносятся на вторую строку, а не сжимаются
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
                         Button(onClick = { navigator.go(Screen.Search) }) {
                             Icon(Icons.Rounded.Search, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
