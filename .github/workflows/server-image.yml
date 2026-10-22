@@ -11,12 +11,17 @@ on:
       - "Dockerfile"
       - "gradle/**"
       - "*.gradle.kts"
+      - "gradlew"
       - ".github/workflows/server-image.yml"
   pull_request:
     paths:
       - "server/**"
       - "sync-protocol/**"
       - "Dockerfile"
+      - "gradle/**"
+      - "*.gradle.kts"
+      - "gradlew"
+      - ".github/workflows/server-image.yml"
   workflow_dispatch:
 
 permissions:
