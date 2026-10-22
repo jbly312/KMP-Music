@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.example.videoplayerkmp.account.SyncManager
 import org.example.videoplayerkmp.data.Library
 import org.example.videoplayerkmp.player.PlayerController
 
@@ -23,7 +24,7 @@ private val CompactWidth = 1100.dp
 private val PhoneWidth = 600.dp
 
 @Composable
-fun MusicApp(player: PlayerController, library: Library, navigator: Navigator, searchState: SearchState) {
+fun MusicApp(player: PlayerController, library: Library, sync: SyncManager, navigator: Navigator, searchState: SearchState) {
     val playerState by player.state.collectAsState()
     val libraryData by library.data.collectAsState()
     val favoriteIds = remember(libraryData.favorites) { libraryData.favorites.mapTo(HashSet()) { it.id } }
@@ -58,6 +59,7 @@ fun MusicApp(player: PlayerController, library: Library, navigator: Navigator, s
         CompositionLocalProvider(
             LocalPlayer provides player,
             LocalLibrary provides library,
+            LocalSync provides sync,
             LocalNavigator provides navigator,
             LocalDialogs provides dialogs,
             LocalNotifier provides notifier,
@@ -114,6 +116,7 @@ internal fun ScreenContent(navigator: Navigator, searchState: SearchState) {
         Screen.Favorites -> FavoritesScreen()
         Screen.History -> HistoryScreen()
         is Screen.PlaylistView -> PlaylistScreen(screen.id)
+        Screen.Account -> AccountScreen()
     }
 }
 

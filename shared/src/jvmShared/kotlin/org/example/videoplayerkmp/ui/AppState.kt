@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import org.example.videoplayerkmp.account.SyncManager
 import org.example.videoplayerkmp.data.Library
 import org.example.videoplayerkmp.data.LibraryData
 import org.example.videoplayerkmp.data.Playlist
@@ -21,6 +22,8 @@ sealed interface Screen {
     data object Favorites : Screen
     data object History : Screen
     data class PlaylistView(val id: String) : Screen
+    /** Вход на сервер синхронизации и её состояние */
+    data object Account : Screen
 }
 
 /** Текущий экран и история переходов — для системной кнопки «Назад» на телефоне. */
@@ -79,6 +82,7 @@ class Notifier(private val show: (text: String, actionLabel: String?, onAction: 
 
 val LocalPlayer = staticCompositionLocalOf<PlayerController> { error("PlayerController не передан") }
 val LocalLibrary = staticCompositionLocalOf<Library> { error("Library не передана") }
+val LocalSync = staticCompositionLocalOf<SyncManager> { error("SyncManager не передан") }
 val LocalNavigator = staticCompositionLocalOf<Navigator> { error("Navigator не передан") }
 val LocalDialogs = staticCompositionLocalOf<Dialogs> { error("Dialogs не переданы") }
 val LocalNotifier = staticCompositionLocalOf { Notifier { _, _, _ -> } }

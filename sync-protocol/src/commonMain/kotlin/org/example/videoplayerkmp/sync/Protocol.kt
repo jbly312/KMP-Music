@@ -22,10 +22,10 @@ object EntityKind {
     /** id = id плейлиста, data = [PlaylistData] */
     const val PLAYLIST = "playlist"
 
-    /** id = произвольный уникальный id элемента, data = [PlaylistItemData] */
+    /** id = "<id плейлиста>:<id трека>" — один трек в плейлисте один раз, data = [PlaylistItemData] */
     const val PLAYLIST_ITEM = "playlist_item"
 
-    /** id = произвольный уникальный id прослушивания, data = [HistoryData] */
+    /** id = id трека: в истории хранится последнее прослушивание каждого трека, data = [HistoryData] */
     const val HISTORY = "history"
 
     /** id = имя настройки (например, "volume"), data = любое JSON-значение */
@@ -48,8 +48,9 @@ data class SyncTrack(
 @Serializable
 data class FavoriteData(val track: SyncTrack, val addedAt: Long)
 
+/** [sort] — имя порядка показа (CUSTOM, TITLE, ARTIST, DURATION); свой порядок задают позиции треков. */
 @Serializable
-data class PlaylistData(val name: String, val createdAt: Long)
+data class PlaylistData(val name: String, val createdAt: Long, val sort: String = "CUSTOM")
 
 /**
  * [position] — дробный индекс: строка, которая сортируется между соседями.

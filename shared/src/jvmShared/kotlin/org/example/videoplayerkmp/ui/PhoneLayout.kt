@@ -73,7 +73,7 @@ internal fun PhoneLayout(navigator: Navigator, searchState: SearchState, snackba
 private fun PhoneNavigationBar(navigator: Navigator) {
     val screen = navigator.screen
     val librarySelected = screen == Screen.Library || screen == Screen.Favorites ||
-        screen == Screen.History || screen is Screen.PlaylistView
+        screen == Screen.History || screen is Screen.PlaylistView || screen == Screen.Account
     NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
         NavigationBarItem(
             selected = screen == Screen.Home,
@@ -267,8 +267,10 @@ internal fun LibraryScreen() {
     val data = LocalLibraryData.current
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)) {
         item {
-            Text("Библиотека", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Библиотека", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = { navigator.go(Screen.Account) }) { SyncIcon() }
+            }
         }
         item {
             LibraryRow("Избранное", tracksCount(data.favorites.size), { navigator.go(Screen.Favorites) }) {
