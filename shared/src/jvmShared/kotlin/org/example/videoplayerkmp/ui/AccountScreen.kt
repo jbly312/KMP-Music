@@ -93,7 +93,8 @@ internal fun syncSummary(short: Boolean = false): String {
     val last = status.lastSyncAt
     return when {
         status.syncing -> "Синхронизация…"
-        status.error != null -> status.error!!
+        // В узкой панели — только суть: «Сервер не найден» без подсказки после тире
+        status.error != null -> if (short) status.error!!.substringBefore(" — ") else status.error!!
         pending > 0 -> (if (short) "Не отправлено: " else "Ждёт отправки: ") + pending
         last != null -> (if (short) "Обновлено " else "Синхронизировано ") + ago(maxOf(now, last) - last)
         else -> "Ещё не синхронизировано"
