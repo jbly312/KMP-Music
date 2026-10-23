@@ -222,7 +222,8 @@ fun TrackList(
         LazyColumn(
             state = state,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
+            contentPadding = if (LocalCompact.current) PaddingValues(start = 8.dp, end = 4.dp, bottom = 16.dp)
+            else PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
         ) {
             if (header != null) item(key = "header") { header() }
             itemsIndexed(tracks, key = { i, _ -> keys[i] }) { i, track ->
@@ -277,6 +278,7 @@ fun TrackRow(
     dragging: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
+    val compact = LocalCompact.current
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val background = when {
@@ -288,7 +290,7 @@ fun TrackRow(
     Row(
         modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(if (compact) 64.dp else 56.dp)
             .then(if (dragging) Modifier.shadow(10.dp, RoundedCornerShape(10.dp)) else Modifier)
             .hoverable(interaction)
             .background(background, RoundedCornerShape(10.dp))
@@ -301,12 +303,18 @@ fun TrackRow(
                 Modifier.width(22.dp).fillMaxHeight().pointerHoverIcon(PointerIcon.Hand).then(dragHandle),
                 contentAlignment = Alignment.Center,
             ) {
-                if (hovered || dragging) {
+                // На телефоне наводить нечем — ручка видна всегда
+                if (hovered || dragging || compact) {
                     Icon(Icons.Rounded.DragIndicator, "Перетащить", Modifier.size(18.dp), tint = colors.onSurfaceVariant)
                 }
             }
         }
-        Box(Modifier.width(36.dp), contentAlignment = Alignment.Center) {
+        if (compact) {
+            // Номер на узком экране отнимает место у названия — текущий трек отмечаем эквалайзером
+            if (isCurrent) {
+                EqualizerBars(playing = isPlaying, color = colors.primary, modifier = Modifier.padding(end = 10.dp).size(14.dp))
+            }
+        } else Box(Modifier.width(36.dp), contentAlignment = Alignment.Center) {
             when {
                 hovered -> Icon(Icons.Rounded.PlayArrow, "Слушать", Modifier.size(20.dp))
                 // Форма (эквалайзер) дублирует цвет: текущий трек виден и без различения цветов
@@ -318,9 +326,9 @@ fun TrackRow(
                 )
             }
         }
-        Spacer(Modifier.width(6.dp))
-        Thumbnail(track.thumbnailUrl, Modifier.size(40.dp), RoundedCornerShape(6.dp))
-        Spacer(Modifier.width(14.dp))
+        if (!compact) Spacer(Modifier.width(6.dp))
+        Thumbnail(track.thumbnailUrl, Modifier.size(if (compact) 48.dp else 40.dp), RoundedCornerShape(6.dp))
+        Spacer(Modifier.width(if (compact) 12.dp else 14.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 track.title,
@@ -338,7 +346,8 @@ fun TrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        FavoriteButton(track, alwaysVisible = hovered)
+        // На телефоне избранное — в меню «⋯» и на экране «Сейчас играет»
+        if (!compact) FavoriteButton(track, alwaysVisible = hovered)
         Text(
             formatDuration(track.durationSec),
             style = MaterialTheme.typography.labelSmall,

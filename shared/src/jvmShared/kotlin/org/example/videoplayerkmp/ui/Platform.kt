@@ -24,6 +24,10 @@ expect fun ColumnScrollbar(state: ScrollState, modifier: Modifier)
 @Composable
 expect fun ScrollbarTheme(content: @Composable () -> Unit)
 
+/** Системная кнопка «Назад» (Android). На ПК её нет. */
+@Composable
+expect fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit)
+
 /** Возвращает действие «выбрать CSV-файл»; выбранный файл приходит в [onPicked] как имя и текст. */
 @Composable
 expect fun rememberCsvPicker(onPicked: (fileName: String, text: String) -> Unit): () -> Unit

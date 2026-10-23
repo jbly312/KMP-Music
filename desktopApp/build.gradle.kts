@@ -40,7 +40,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "KMP Music"
             // При выпуске новой версии увеличивайте номер — установщик обновит приложение поверх старого
-            packageVersion = "1.1.2"
+            packageVersion = "1.2.0"
             description = "Music streaming player"
             vendor = "KMP Music"
             // jdk.httpserver — локальный прокси для потокового воспроизведения, java.logging — для JNativeHook

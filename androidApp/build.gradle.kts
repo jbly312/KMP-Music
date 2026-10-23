@@ -1,6 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+}
+
+/**
+ * Ключ подписи релиза — в keystore.properties в корне проекта (не в git):
+ * storeFile, storePassword, keyAlias, keyPassword. Обновление на телефоне ставится,
+ * только если подписано тем же ключом — его нельзя терять.
+ */
+val releaseSigning = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { file ->
+    Properties().apply { file.inputStream().use(::load) }
 }
 
 android {
@@ -15,9 +26,22 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // NewPipe и Rhino работают через рефлексию — без сжатия надёжнее
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

@@ -107,6 +107,16 @@ fun Sidebar(expanded: Boolean, onToggle: () -> Unit) {
                 }
             }
         }
+
+        HorizontalDivider(Modifier.padding(vertical = 8.dp, horizontal = 6.dp), color = colors.outlineVariant)
+        val account by LocalSync.current.account.collectAsState()
+        SidebarItem(
+            expanded = expanded,
+            label = account?.user?.username ?: "Синхронизация",
+            subtitle = if (account != null) syncSummary(short = true) else "Войти на свой сервер",
+            selected = screen == Screen.Account,
+            onClick = { navigator.go(Screen.Account) },
+        ) { SyncIcon() }
     }
 }
 
