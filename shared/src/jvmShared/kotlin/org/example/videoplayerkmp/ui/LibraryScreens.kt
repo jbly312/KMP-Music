@@ -78,7 +78,8 @@ fun HomeScreen() {
 
             if (data.history.isNotEmpty()) {
                 SectionTitle("Недавно прослушанные") { navigator.go(Screen.History) }
-                TrackCards(data.history.take(12))
+                // Как в YouTube Music: трек из недавних запускает радио по нему, а не историю подряд
+                TrackCards(data.history.take(12), radio = true)
             }
             if (data.favorites.isNotEmpty()) {
                 SectionTitle("Избранное") { navigator.go(Screen.Favorites) }
@@ -122,15 +123,16 @@ private fun SectionTitle(title: String, onShowAll: (() -> Unit)?) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TrackCards(tracks: List<Track>) {
+private fun TrackCards(tracks: List<Track>, radio: Boolean = false) {
     val player = LocalPlayer.current
     FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         tracks.forEachIndexed { i, track ->
+            val play = { if (radio) player.playRadio(track) else player.playTracks(tracks, i) }
             Card(
                 title = track.title,
                 subtitle = track.artist,
-                onClick = { player.playTracks(tracks, i) },
-                onPlay = { player.playTracks(tracks, i) },
+                onClick = play,
+                onPlay = play,
             ) {
                 Thumbnail(sizedThumbnail(track.thumbnailUrl, 320), Modifier.fillMaxSize(), RectangleShape)
             }
