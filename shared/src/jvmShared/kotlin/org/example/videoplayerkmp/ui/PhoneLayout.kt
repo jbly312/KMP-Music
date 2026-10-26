@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,7 @@ import org.example.videoplayerkmp.player.RepeatMode
 internal fun PhoneLayout(navigator: Navigator, searchState: SearchState, snackbar: SnackbarHostState) {
     val state = LocalPlayerState.current
     var nowPlayingOpen by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
     if (state.current == null) nowPlayingOpen = false
 
     // Системная «Назад»: сначала закрывает «Сейчас играет», потом возвращает по истории экранов
@@ -55,7 +57,11 @@ internal fun PhoneLayout(navigator: Navigator, searchState: SearchState, snackba
                 AppSnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(12.dp))
             }
             if (!keyboardOpen) {
-                if (state.current != null) MiniPlayer(onOpen = { nowPlayingOpen = true })
+                if (state.current != null) MiniPlayer(onOpen = {
+                    // Иначе поле поиска под плеером держит фокус и клавиатура всплывает поверх
+                    focusManager.clearFocus()
+                    nowPlayingOpen = true
+                })
                 PhoneNavigationBar(navigator)
             }
         }
@@ -129,6 +135,8 @@ private fun MiniPlayer(onOpen: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            // Первое нажатие начинает трек сначала, второе (в первые 3 с) — переход к предыдущему
+            IconButton(onClick = player::previous) { Icon(Icons.Rounded.SkipPrevious, "Предыдущий") }
             IconButton(onClick = player::togglePlay) {
                 if (state.isBuffering) {
                     CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
