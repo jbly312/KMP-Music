@@ -16,6 +16,7 @@ import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import org.example.videoplayerkmp.account.SyncManager
 import org.example.videoplayerkmp.data.AppDirs
 import org.example.videoplayerkmp.data.Library
 import org.example.videoplayerkmp.player.AudioCache
@@ -33,13 +34,15 @@ import java.io.File
 fun main() {
     // Вторая копия не запускается — вместо этого показывается окно первой
     if (!SingleInstance.acquire(AppDirs.data)) return
-    val library = Library(File(AppDirs.data, "library.json"))
+    val library = Library(AppDirs.data)
     val cache = AudioCache(AppDirs.cache)
     val server = StreamServer(cache)
     val player = PlayerController(JavaFxEngine(cache, server), library)
     player.warmUp()
     MediaKeys.start(player)
-    val searchState = SearchState(CoroutineScope(SupervisorJob() + Dispatchers.Main), player)
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    val searchState = SearchState(appScope, player)
+    val sync = SyncManager(library, AppDirs.data, appScope)
 
     application {
         val navigator = remember { Navigator() }
@@ -69,7 +72,7 @@ fun main() {
         ) {
             window.minimumSize = Dimension(860, 600)
             SingleInstance.window = window
-            MusicApp(player, library, navigator, searchState)
+            MusicApp(player, library, sync, navigator, searchState)
         }
     }
 }

@@ -29,18 +29,22 @@ class MainActivity : ComponentActivity() {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         val app = application as KmpMusicApp
-        setContent { MusicApp(app.player, app.library, app.navigator, app.searchState) }
+        setContent { MusicApp(app.player, app.library, app.sync, app.navigator, app.searchState) }
     }
 
     /** Подключение к сервису запускает его — так Media3 показывает уведомление, когда играет музыка. */
     override fun onStart() {
         super.onStart()
+        // Вернулись в приложение — подтягиваем изменения с других устройств
+        (application as KmpMusicApp).sync.syncNow()
         controller = MediaController.Builder(this, SessionToken(this, ComponentName(this, PlaybackService::class.java))).buildAsync()
     }
 
     override fun onStop() {
         controller?.let(MediaController::releaseFuture)
         controller = null
+        // Процесс могут закрыть в любой момент после ухода с экрана — сохраняем сразу
+        (application as KmpMusicApp).library.flush()
         super.onStop()
     }
 }

@@ -44,5 +44,10 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        // Синхронизация проверяется против настоящего сервера, запущенного прямо в тесте
+        jvmTest.dependencies {
+            implementation(project(":server"))
+            implementation(libs.ktor.server.cio)
+        }
     }
 }

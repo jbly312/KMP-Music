@@ -77,3 +77,6 @@ actual fun rememberCsvPicker(onPicked: (fileName: String, text: String) -> Unit)
         dialog.file?.let { name -> onPicked(name, File(dialog.directory, name).readText()) }
     }
 }
+
+@Composable
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit

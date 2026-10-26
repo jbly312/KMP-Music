@@ -8,6 +8,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,6 +83,10 @@ class PlayerController(
             override fun onError(message: String) = onTrackFailed(generation, message)
         })
         engine.setVolume(_state.value.volume)
+        // Любая правка очереди или режима повтора меняет то, что играет следующим
+        scope.launch {
+            _state.map { upcomingTrack(it) }.distinctUntilChanged().collect(engine::setUpcoming)
+        }
     }
 
     /** Прогрев: JavaFX и NewPipe инициализируются заранее, чтобы первый трек стартовал быстрее. */
@@ -314,6 +320,14 @@ class PlayerController(
             _state.update { it.copy(queue = it.queue + tracks, radioSeed = current) }
             if (playWhenReady) next() else prefetchNext()
         }
+    }
+
+    /** Что заиграет, когда текущий трек закончится сам; null — решит [onEnded]. */
+    private fun upcomingTrack(s: PlayerState): Track? = when {
+        s.current == null || s.repeat == RepeatMode.ONE -> null
+        s.index < s.queue.lastIndex -> s.queue[s.index + 1]
+        s.repeat == RepeatMode.ALL && s.queue.size > 1 -> s.queue.first()
+        else -> null
     }
 
     private fun prefetchNext() {

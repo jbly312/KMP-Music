@@ -18,6 +18,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.window.Popup
@@ -168,6 +173,8 @@ fun SearchScreen(state: SearchState) {
     val colors = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     var fieldSize by remember { mutableStateOf(IntSize.Zero) }
     // Подсказка, выбранная стрелками ↑/↓; -1 — никакая
     var highlighted by remember(state.suggestions) { mutableStateOf(-1) }
@@ -177,7 +184,8 @@ fun SearchScreen(state: SearchState) {
     val showSuggestions = state.suggestions.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(start = 32.dp, end = 32.dp, top = 28.dp, bottom = 8.dp)) {
+        val pad = if (LocalCompact.current) 16.dp else 32.dp
+        Column(Modifier.padding(start = pad, end = pad, top = if (LocalCompact.current) 12.dp else 28.dp, bottom = 8.dp)) {
             Box {
                 OutlinedTextField(
                     value = state.query,
@@ -192,6 +200,14 @@ fun SearchScreen(state: SearchState) {
                         }
                     },
                     singleLine = true,
+                    // Кнопка «Найти» на экранной клавиатуре телефона
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = {
+                        state.submit()
+                        keyboard?.hide()
+                        // Без снятия фокуса клавиатура вернётся, когда приложение снова откроют
+                        focusManager.clearFocus()
+                    }),
                     shape = RoundedCornerShape(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = colors.surfaceContainerHigh,
